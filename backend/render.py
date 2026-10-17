@@ -25,9 +25,12 @@ def render(result, out_dir="out"):
     for view, (elev, azim) in VIEWS.items():
         fig = plt.figure(figsize=(7, 6), dpi=110)
         ax = fig.add_subplot(projection="3d", computed_zorder=False)
-        # ponytail: fixed draw order (air, volumes, sheets) instead of depth sorting, so sheets
-        # lying on a face stay visible; good enough for sanity-check renders.
-        for z, o in enumerate(sorted(objs, key=lambda o: (o["material"] != "air", o["dim"] == 2))):
+        # ponytail: painter's order per object (air first, then far-to-near by centroid), so
+        # sheets lying on a volume face stay visible; per-triangle sorting if this ever misleads.
+        e, a = np.radians(elev), np.radians(azim)
+        toward_viewer = np.array([np.cos(e) * np.cos(a), np.cos(e) * np.sin(a), np.sin(e)])
+        depth = lambda o: np.reshape(o["positions"], (-1, 3)).mean(0) @ toward_viewer
+        for z, o in enumerate(sorted(objs, key=lambda o: (o["material"] != "air", depth(o), o["dim"] == 2))):
             pts = np.reshape(o["positions"], (-1, 3)) * 1e3
             tris = pts[np.reshape(o["indices"], (-1, 3))]
             air = o["material"] == "air"

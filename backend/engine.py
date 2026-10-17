@@ -173,6 +173,7 @@ def _bbox(dts):
 def _groups(project, names, meta, warnings):
     """Physical groups after fragment. Returns {(dim, name): [tags]}."""
     groups = defaultdict(list)
+    port_targets = {p.target for p in project.ports}
     for n, dts in names.items():
         mat = meta[n]["material"]
         for d, t in dts:
@@ -180,7 +181,7 @@ def _groups(project, names, meta, warnings):
                 groups[(3, f"mat:{mat}")].append(t)
             elif d == 2 and mat in METALS:
                 groups[(2, "bc:PEC")].append(t)
-        if dts and dts[0][0] == 2 and mat not in METALS:
+        if dts and dts[0][0] == 2 and mat not in METALS and n not in port_targets:
             warnings.append(f"sheet '{n}' has non-metal material '{mat}'; no physical group assigned")
 
     all_vols = gmsh.model.getEntities(3)
