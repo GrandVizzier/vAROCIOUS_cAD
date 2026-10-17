@@ -1,0 +1,1118 @@
+{
+  "name": "mu2023_cp_toploaded_cell",
+  "units": "mm",
+  "description": "CP top-loaded-patch TCDA unit cell (Mu et al., AEU Int. J. Electron. Commun. 170 (2023) 154810, Fig. 1 / Table 1): ring dipoles, two-layer folded coupling patches, circular top-loaded patch, F4B stack, Y-shaped feed lines on top of h3 (x-pol line bridged under the y-pol line on the dipole layer); periodic walls + Floquet port. port:1 = x-pol, port:2 = y-pol coax apertures at the ground plane; drive with 90 deg offset to emulate the omitted FR4 phase-shifter layer (h6).",
+  "variables": {
+    "f_lo": "3.2e9",
+    "f_hi": "12.5e9",
+    "f0": "f_lo",
+    "lam_lo": "c0/f_lo*1000",
+    "lam_hi": "c0/f_hi*1000",
+    "p": "10.5",
+    "l1": "1.8",
+    "l2": "4.0",
+    "l3": "4.8",
+    "h1": "0.787",
+    "h2": "1.575",
+    "h3": "0.254",
+    "h4": "1.575",
+    "h5": "3.175",
+    "h6": "0.254",
+    "r1": "1.85",
+    "r2": "4.0",
+    "t": "0.1",
+    "er": "2.2",
+    "d": "3.0",
+    "r_in": "1.2",
+    "sec_half": "35",
+    "w_f": "0.3",
+    "fv": "d - r_in - 0.1",
+    "via_r": "0.15",
+    "fold_in": "1.25",
+    "gnd_in": "0.3",
+    "via_lat": "1.4",
+    "Z0": "50",
+    "probe_r": "0.15",
+    "hole_r": "probe_r*exp(Z0*sqrt(er)/60)",
+    "er_pp": "3.52",
+    "strip_start": "d - r1 + 0.15",
+    "bx1": "0.65",
+    "bx2": "0.45",
+    "bvia_r": "0.1",
+    "z_d": "h5 + h4",
+    "z_f": "z_d + h3",
+    "z_c1": "z_f + t",
+    "z_c2": "z_c1 + h2",
+    "z_top": "z_c2 + h1",
+    "air_top": "lam_lo/4",
+    "mesh_size": "lam_hi/10"
+  },
+  "history": [
+    {
+      "op": "box",
+      "name": "sub5",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "0"
+      ],
+      "size": [
+        "p",
+        "p",
+        "h5"
+      ],
+      "material": "F4B"
+    },
+    {
+      "op": "box",
+      "name": "sub4",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "h5"
+      ],
+      "size": [
+        "p",
+        "p",
+        "h4"
+      ],
+      "material": "F4B"
+    },
+    {
+      "op": "box",
+      "name": "sub3",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "z_d"
+      ],
+      "size": [
+        "p",
+        "p",
+        "h3"
+      ],
+      "material": "F4B"
+    },
+    {
+      "op": "box",
+      "name": "prepreg",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "z_f"
+      ],
+      "size": [
+        "p",
+        "p",
+        "t"
+      ],
+      "material": "prepreg"
+    },
+    {
+      "op": "box",
+      "name": "sub2",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "z_c1"
+      ],
+      "size": [
+        "p",
+        "p",
+        "h2"
+      ],
+      "material": "F4B"
+    },
+    {
+      "op": "box",
+      "name": "sub1",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "z_c2"
+      ],
+      "size": [
+        "p",
+        "p",
+        "h1"
+      ],
+      "material": "F4B"
+    },
+    {
+      "op": "disk",
+      "name": "ring_xp",
+      "center": [
+        "d",
+        "0",
+        "z_d"
+      ],
+      "radius": "r1",
+      "material": "copper"
+    },
+    {
+      "op": "disk",
+      "name": "ring_xp_hole",
+      "center": [
+        "d",
+        "0",
+        "z_d"
+      ],
+      "radius": "r_in",
+      "material": "copper"
+    },
+    {
+      "op": "subtract",
+      "object": "ring_xp",
+      "tools": [
+        "ring_xp_hole"
+      ]
+    },
+    {
+      "op": "disk",
+      "name": "ring_xn",
+      "center": [
+        "-d",
+        "0",
+        "z_d"
+      ],
+      "radius": "r1",
+      "material": "copper"
+    },
+    {
+      "op": "disk",
+      "name": "ring_xn_hole",
+      "center": [
+        "-d",
+        "0",
+        "z_d"
+      ],
+      "radius": "r_in",
+      "material": "copper"
+    },
+    {
+      "op": "subtract",
+      "object": "ring_xn",
+      "tools": [
+        "ring_xn_hole"
+      ]
+    },
+    {
+      "op": "disk",
+      "name": "ring_yp",
+      "center": [
+        "0",
+        "d",
+        "z_d"
+      ],
+      "radius": "r1",
+      "material": "copper"
+    },
+    {
+      "op": "disk",
+      "name": "ring_yp_hole",
+      "center": [
+        "0",
+        "d",
+        "z_d"
+      ],
+      "radius": "r_in",
+      "material": "copper"
+    },
+    {
+      "op": "subtract",
+      "object": "ring_yp",
+      "tools": [
+        "ring_yp_hole"
+      ]
+    },
+    {
+      "op": "disk",
+      "name": "ring_yn",
+      "center": [
+        "0",
+        "-d",
+        "z_d"
+      ],
+      "radius": "r1",
+      "material": "copper"
+    },
+    {
+      "op": "disk",
+      "name": "ring_yn_hole",
+      "center": [
+        "0",
+        "-d",
+        "z_d"
+      ],
+      "radius": "r_in",
+      "material": "copper"
+    },
+    {
+      "op": "subtract",
+      "object": "ring_yn",
+      "tools": [
+        "ring_yn_hole"
+      ]
+    },
+    {
+      "op": "disk",
+      "name": "sector_x",
+      "center": [
+        "-d",
+        "0",
+        "z_f"
+      ],
+      "radius": "r1",
+      "material": "copper"
+    },
+    {
+      "op": "disk",
+      "name": "sector_x_hole",
+      "center": [
+        "-d",
+        "0",
+        "z_f"
+      ],
+      "radius": "r_in",
+      "material": "copper"
+    },
+    {
+      "op": "subtract",
+      "object": "sector_x",
+      "tools": [
+        "sector_x_hole"
+      ]
+    },
+    {
+      "op": "rectangle",
+      "name": "sector_x_cutA",
+      "origin": [
+        "-d",
+        "-p/2",
+        "z_f"
+      ],
+      "size": [
+        "p/2",
+        "p/2"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rotate",
+      "target": "sector_x_cutA",
+      "origin": [
+        "-d",
+        "0",
+        "z_f"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "1"
+      ],
+      "angle": "sec_half"
+    },
+    {
+      "op": "rectangle",
+      "name": "sector_x_cutB",
+      "origin": [
+        "-d",
+        "0",
+        "z_f"
+      ],
+      "size": [
+        "p/2",
+        "p/2"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rotate",
+      "target": "sector_x_cutB",
+      "origin": [
+        "-d",
+        "0",
+        "z_f"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "1"
+      ],
+      "angle": "-sec_half"
+    },
+    {
+      "op": "intersect",
+      "object": "sector_x",
+      "tools": [
+        "sector_x_cutA",
+        "sector_x_cutB"
+      ]
+    },
+    {
+      "op": "disk",
+      "name": "sector_y",
+      "center": [
+        "0",
+        "-d",
+        "z_f"
+      ],
+      "radius": "r1",
+      "material": "copper"
+    },
+    {
+      "op": "disk",
+      "name": "sector_y_hole",
+      "center": [
+        "0",
+        "-d",
+        "z_f"
+      ],
+      "radius": "r_in",
+      "material": "copper"
+    },
+    {
+      "op": "subtract",
+      "object": "sector_y",
+      "tools": [
+        "sector_y_hole"
+      ]
+    },
+    {
+      "op": "rectangle",
+      "name": "sector_y_cutA",
+      "origin": [
+        "0",
+        "-d",
+        "z_f"
+      ],
+      "size": [
+        "p/2",
+        "p/2"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rotate",
+      "target": "sector_y_cutA",
+      "origin": [
+        "0",
+        "-d",
+        "z_f"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "1"
+      ],
+      "angle": "sec_half"
+    },
+    {
+      "op": "rectangle",
+      "name": "sector_y_cutB",
+      "origin": [
+        "-p/2",
+        "-d",
+        "z_f"
+      ],
+      "size": [
+        "p/2",
+        "p/2"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rotate",
+      "target": "sector_y_cutB",
+      "origin": [
+        "0",
+        "-d",
+        "z_f"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "1"
+      ],
+      "angle": "-sec_half"
+    },
+    {
+      "op": "intersect",
+      "object": "sector_y",
+      "tools": [
+        "sector_y_cutA",
+        "sector_y_cutB"
+      ]
+    },
+    {
+      "op": "rectangle",
+      "name": "feed_y",
+      "origin": [
+        "-w_f/2",
+        "-strip_start",
+        "z_f"
+      ],
+      "size": [
+        "w_f",
+        "strip_start + fv + w_f/2"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "unite",
+      "object": "feed_y",
+      "tools": [
+        "sector_y"
+      ]
+    },
+    {
+      "op": "rectangle",
+      "name": "feed_x",
+      "origin": [
+        "-strip_start",
+        "-w_f/2",
+        "z_f"
+      ],
+      "size": [
+        "strip_start - bx1 + w_f/2",
+        "w_f"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "unite",
+      "object": "feed_x",
+      "tools": [
+        "sector_x"
+      ]
+    },
+    {
+      "op": "rectangle",
+      "name": "feed_x2",
+      "origin": [
+        "bx2 - w_f/2",
+        "-w_f/2",
+        "z_f"
+      ],
+      "size": [
+        "fv - bx2 + w_f",
+        "w_f"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "bridge_x",
+      "origin": [
+        "-bx1 - w_f/2",
+        "-w_f/2",
+        "z_d"
+      ],
+      "size": [
+        "bx1 + bx2 + w_f",
+        "w_f"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_bridge_x1",
+      "origin": [
+        "-bx1",
+        "0",
+        "z_d"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "h3"
+      ],
+      "radius": "bvia_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_bridge_x2",
+      "origin": [
+        "bx2",
+        "0",
+        "z_d"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "h3"
+      ],
+      "radius": "bvia_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "probe_x",
+      "origin": [
+        "fv",
+        "0",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_f"
+      ],
+      "radius": "probe_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "probe_y",
+      "origin": [
+        "0",
+        "fv",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_f"
+      ],
+      "radius": "probe_r",
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "cpl1_xp",
+      "origin": [
+        "p/2 - l1",
+        "-l2/2",
+        "z_c1"
+      ],
+      "size": [
+        "l1",
+        "l2"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "cpl2_xp",
+      "origin": [
+        "p/2 - l1",
+        "-l3/2",
+        "z_c2"
+      ],
+      "size": [
+        "l1",
+        "l3"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_gnd_xpa",
+      "origin": [
+        "p/2 - gnd_in",
+        "via_lat",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_c1"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_fold_xpa",
+      "origin": [
+        "p/2 - fold_in",
+        "via_lat",
+        "z_c1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "h2"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_gnd_xpb",
+      "origin": [
+        "p/2 - gnd_in",
+        "-via_lat",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_c1"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_fold_xpb",
+      "origin": [
+        "p/2 - fold_in",
+        "-via_lat",
+        "z_c1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "h2"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "cpl1_xn",
+      "origin": [
+        "-p/2",
+        "-l2/2",
+        "z_c1"
+      ],
+      "size": [
+        "l1",
+        "l2"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "cpl2_xn",
+      "origin": [
+        "-p/2",
+        "-l3/2",
+        "z_c2"
+      ],
+      "size": [
+        "l1",
+        "l3"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_gnd_xna",
+      "origin": [
+        "-p/2 + gnd_in",
+        "via_lat",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_c1"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_fold_xna",
+      "origin": [
+        "-p/2 + fold_in",
+        "via_lat",
+        "z_c1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "h2"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_gnd_xnb",
+      "origin": [
+        "-p/2 + gnd_in",
+        "-via_lat",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_c1"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_fold_xnb",
+      "origin": [
+        "-p/2 + fold_in",
+        "-via_lat",
+        "z_c1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "h2"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "cpl1_yp",
+      "origin": [
+        "-l2/2",
+        "p/2 - l1",
+        "z_c1"
+      ],
+      "size": [
+        "l2",
+        "l1"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "cpl2_yp",
+      "origin": [
+        "-l3/2",
+        "p/2 - l1",
+        "z_c2"
+      ],
+      "size": [
+        "l3",
+        "l1"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_gnd_ypa",
+      "origin": [
+        "via_lat",
+        "p/2 - gnd_in",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_c1"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_fold_ypa",
+      "origin": [
+        "via_lat",
+        "p/2 - fold_in",
+        "z_c1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "h2"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_gnd_ypb",
+      "origin": [
+        "-via_lat",
+        "p/2 - gnd_in",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_c1"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_fold_ypb",
+      "origin": [
+        "-via_lat",
+        "p/2 - fold_in",
+        "z_c1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "h2"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "cpl1_yn",
+      "origin": [
+        "-l2/2",
+        "-p/2",
+        "z_c1"
+      ],
+      "size": [
+        "l2",
+        "l1"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "cpl2_yn",
+      "origin": [
+        "-l3/2",
+        "-p/2",
+        "z_c2"
+      ],
+      "size": [
+        "l3",
+        "l1"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_gnd_yna",
+      "origin": [
+        "via_lat",
+        "-p/2 + gnd_in",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_c1"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_fold_yna",
+      "origin": [
+        "via_lat",
+        "-p/2 + fold_in",
+        "z_c1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "h2"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_gnd_ynb",
+      "origin": [
+        "-via_lat",
+        "-p/2 + gnd_in",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_c1"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_fold_ynb",
+      "origin": [
+        "-via_lat",
+        "-p/2 + fold_in",
+        "z_c1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "h2"
+      ],
+      "radius": "via_r",
+      "material": "copper"
+    },
+    {
+      "op": "disk",
+      "name": "top_patch",
+      "center": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "r2",
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "ground",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "0"
+      ],
+      "size": [
+        "p",
+        "p"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "disk",
+      "name": "gh_x",
+      "center": [
+        "fv",
+        "0",
+        "0"
+      ],
+      "radius": "hole_r",
+      "material": "copper"
+    },
+    {
+      "op": "disk",
+      "name": "gh_y",
+      "center": [
+        "0",
+        "fv",
+        "0"
+      ],
+      "radius": "hole_r",
+      "material": "copper"
+    },
+    {
+      "op": "subtract",
+      "object": "ground",
+      "tools": [
+        "gh_x",
+        "gh_y"
+      ]
+    },
+    {
+      "op": "disk",
+      "name": "port_x",
+      "center": [
+        "fv",
+        "0",
+        "0"
+      ],
+      "radius": "hole_r",
+      "material": "lumped"
+    },
+    {
+      "op": "disk",
+      "name": "port_x_pin",
+      "center": [
+        "fv",
+        "0",
+        "0"
+      ],
+      "radius": "probe_r",
+      "material": "copper"
+    },
+    {
+      "op": "subtract",
+      "object": "port_x",
+      "tools": [
+        "port_x_pin"
+      ]
+    },
+    {
+      "op": "disk",
+      "name": "port_y",
+      "center": [
+        "0",
+        "fv",
+        "0"
+      ],
+      "radius": "hole_r",
+      "material": "lumped"
+    },
+    {
+      "op": "disk",
+      "name": "port_y_pin",
+      "center": [
+        "0",
+        "fv",
+        "0"
+      ],
+      "radius": "probe_r",
+      "material": "copper"
+    },
+    {
+      "op": "subtract",
+      "object": "port_y",
+      "tools": [
+        "port_y_pin"
+      ]
+    },
+    {
+      "op": "box",
+      "name": "airbox",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "0"
+      ],
+      "size": [
+        "p",
+        "p",
+        "z_top + air_top"
+      ],
+      "material": "air"
+    }
+  ],
+  "boundaries": [
+    {
+      "type": "master1",
+      "target": "*",
+      "faces": "-x"
+    },
+    {
+      "type": "slave1",
+      "target": "*",
+      "faces": "+x"
+    },
+    {
+      "type": "master2",
+      "target": "*",
+      "faces": "-y"
+    },
+    {
+      "type": "slave2",
+      "target": "*",
+      "faces": "+y"
+    },
+    {
+      "type": "floquet",
+      "target": "airbox",
+      "faces": "+z"
+    },
+    {
+      "type": "PEC",
+      "target": "*",
+      "faces": "-z"
+    }
+  ],
+  "ports": [
+    {
+      "target": "port_x"
+    },
+    {
+      "target": "port_y"
+    }
+  ]
+}
