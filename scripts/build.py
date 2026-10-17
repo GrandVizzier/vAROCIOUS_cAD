@@ -35,16 +35,16 @@ def main():
     ap.add_argument("project")
     ap.add_argument("--render", action="store_true", help="save top/front/iso PNGs")
     ap.add_argument("--out", default="out")
-    ap.add_argument("--quiet", action="store_true", help="no summary (used by the server)")
+    ap.add_argument("--json", action="store_true", help="print the result JSON instead of the summary")
     args = ap.parse_args()
     try:
         r = build(args.project, args.out)
     except BuildError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
-    Path(args.out, f"{r['name']}.result.json").write_text(json.dumps(r), encoding="utf-8")
-    if not args.quiet:
-        print(summary(r))
+    text = json.dumps(r)
+    Path(args.out, f"{r['name']}.result.json").write_text(text, encoding="utf-8")
+    print(text if args.json else summary(r))
     if args.render:
         from backend.render import render
         print("Rendered: " + ", ".join(render(r, args.out)))
