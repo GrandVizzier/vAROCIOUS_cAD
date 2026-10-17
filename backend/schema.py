@@ -84,9 +84,11 @@ PRIMITIVES = (Box, Cylinder, Sphere, Rectangle, Disk)
 
 class Boundary(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    type: Literal["radiation", "PEC"]
-    target: str
-    faces: Literal["outer", "all"] = "outer"
+    type: Literal["radiation", "PEC", "floquet", "master1", "slave1", "master2", "slave2"]
+    target: str             # object name, or "*" for all volumes
+    # outer: target faces on the model's outer boundary; all: whole target boundary;
+    # +x/-x/...: outer target faces lying on that side of the model's bounding box
+    faces: Literal["outer", "all", "+x", "-x", "+y", "-y", "+z", "-z"] = "outer"
 
 
 class Port(BaseModel):

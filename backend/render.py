@@ -9,7 +9,8 @@ import numpy as np  # noqa: E402
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection  # noqa: E402
 
 COLORS = {"PEC": "#d4a017", "copper": "#c87533", "FR4": "#3a8f4a", "PTFE": "#e8e8e8",
-          "air": "#6fa8dc"}
+          "air": "#6fa8dc", "TLY5": "#9fb0c2", "RO4450F": "#d6cf8f"}
+METALS = {"PEC", "copper", "Cu"}
 VIEWS = {"top": (90, -90), "front": (0, -90), "iso": (28, -55)}
 
 
@@ -34,8 +35,9 @@ def render(result, out_dir="out"):
             pts = np.reshape(o["positions"], (-1, 3)) * 1e3
             tris = pts[np.reshape(o["indices"], (-1, 3))]
             air = o["material"] == "air"
+            solid = o["material"] in METALS or o["dim"] == 2
             ax.add_collection3d(Poly3DCollection(
-                tris, facecolor=color(o["material"]), alpha=0.08 if air else 0.9,
+                tris, facecolor=color(o["material"]), alpha=0.08 if air else 0.9 if solid else 0.3,
                 edgecolor=(0, 0, 0, 0.05 if air else 0.25), linewidth=0.2,
                 label=f"{o['name']} ({o['material']})", zorder=z))
         ax.set(xlim=(lo[0], hi[0]), ylim=(lo[1], hi[1]), zlim=(lo[2], hi[2]),
@@ -43,7 +45,8 @@ def render(result, out_dir="out"):
         ax.set_box_aspect(np.maximum(hi - lo, 1e-3 * (hi - lo).max()))
         ax.view_init(elev=elev, azim=azim)
         ax.set_title(f"{result['name']} — {view}")
-        ax.legend(loc="upper left", fontsize=7)
+        if len(objs) <= 12:
+            ax.legend(loc="upper left", fontsize=7)
         p = Path(out_dir) / f"{result['name']}_{view}.png"
         fig.savefig(p, bbox_inches="tight")
         plt.close(fig)

@@ -47,6 +47,18 @@ def test_build_errors_point_at_history_step(tmp_path):
         build(write(tmp_path, cyc), tmp_path)
 
 
+def test_side_face_selectors_for_periodic_cells(tmp_path):
+    top = {**BOX, "name": "air", "origin": ["0", "0", "1"], "material": "air"}
+    data = project(history=[BOX, top], boundaries=[
+        {"type": "master1", "target": "*", "faces": "-x"},
+        {"type": "slave1", "target": "*", "faces": "+x"},
+        {"type": "floquet", "target": "air", "faces": "+z"},
+        {"type": "radiation", "target": "b", "faces": "-z"}])
+    r = build(write(tmp_path, data), tmp_path, mesh=False)
+    g = {x["name"]: x["count"] for x in r["groups"]}
+    assert g == {"mat:air": 2, "bc:master1": 2, "bc:slave1": 2, "bc:floquet": 1, "bc:radiation": 1}
+
+
 def test_fully_consumed_warning(tmp_path):
     small = {**BOX, "name": "s", "origin": ["0.2", "0.2", "0.2"], "size": ["0.5", "0.5", "0.5"]}
     data = project(history=[small, BOX, {"op": "intersect", "object": "s", "tools": ["b"],

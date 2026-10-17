@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { Bounds, Edges, GizmoHelper, GizmoViewport, Grid, OrbitControls } from "@react-three/drei";
-import { Obj, isTransparent, materialColor } from "./api";
+import { Obj, materialColor, opacity } from "./api";
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1); // Z-up
 
@@ -18,7 +18,8 @@ function ObjectMesh({ obj, selected, wireframe, onSelect }: {
     g.computeVertexNormals();
     return g;
   }, [obj]);
-  const air = isTransparent(obj);
+  const air = obj.material === "air";
+  const alpha = opacity(obj);
   const sheet = obj.dim === 2;
   return (
     <group>
@@ -30,9 +31,9 @@ function ObjectMesh({ obj, selected, wireframe, onSelect }: {
       >
         <meshStandardMaterial
           color={selected ? SELECT : materialColor(obj.material)}
-          transparent={air}
-          opacity={air ? (selected ? 0.2 : 0.06) : 1}
-          depthWrite={!air}
+          transparent={alpha < 1}
+          opacity={selected ? Math.max(alpha, 0.25) : alpha}
+          depthWrite={alpha === 1}
           side={THREE.DoubleSide}
           // sheets sit on volume faces: push volumes back so sheets (and all edge lines) win
           polygonOffset={!sheet}

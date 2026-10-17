@@ -54,7 +54,15 @@ export const MATERIAL_COLORS: Record<string, string> = {
   FR4: "#3a8f4a",
   PTFE: "#e8e8e8",
   air: "#6fa8dc",
+  TLY5: "#9fb0c2",
+  RO4450F: "#d6cf8f",
 };
+
+const METALS = new Set(["PEC", "copper", "Cu"]);
+
+/** air nearly invisible, dielectrics translucent (to see vias/probes inside), metals opaque */
+export const opacity = (o: Obj) =>
+  o.material === "air" ? 0.06 : METALS.has(o.material) || o.dim === 2 ? 1 : 0.4;
 
 export function materialColor(m: string) {
   if (MATERIAL_COLORS[m]) return MATERIAL_COLORS[m];
@@ -62,5 +70,3 @@ export function materialColor(m: string) {
   for (const ch of m) h = (h * 31 + ch.charCodeAt(0)) % 360;
   return `hsl(${h} 55% 55%)`;
 }
-
-export const isTransparent = (o: Obj) => o.material === "air";

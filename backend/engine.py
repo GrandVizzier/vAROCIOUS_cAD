@@ -170,6 +170,11 @@ def _bbox(dts):
             [max(b[i + 3] for b in boxes) for i in range(3)])
 
 
+def _tol(lo, hi):
+    """Coordinate tolerance; OCC bounding boxes carry ~1e-7 m of slack."""
+    return 1e-6 + 1e-4 * max(h - l for l, h in zip(lo, hi))
+
+
 def _groups(project, names, meta, warnings):
     """Physical groups after fragment. Returns {(dim, name): [tags]}."""
     groups = defaultdict(list)
@@ -186,16 +191,27 @@ def _groups(project, names, meta, warnings):
 
     all_vols = gmsh.model.getEntities(3)
     outer = {abs(t) for _, t in gmsh.model.getBoundary(all_vols, combined=True, oriented=False)}
+    if all_vols:
+        lo, hi = _bbox(all_vols)
+        tol = _tol(lo, hi)
     for b in project.boundaries:
-        if b.target not in names:
+        if b.target == "*":
+            vols = all_vols
+        elif b.target not in names:
             raise BuildError(f"boundary {b.type}: unknown object '{b.target}'")
-        vols = [dt for dt in names[b.target] if dt[0] == 3]
+        else:
+            vols = [dt for dt in names[b.target] if dt[0] == 3]
         if not vols:
             raise BuildError(f"boundary {b.type}: '{b.target}' is not a volume")
         if b.faces == "outer":
             faces = [f for f in _faces_of(vols) if f in outer]
-        else:
+        elif b.faces == "all":
             faces = [abs(t) for _, t in gmsh.model.getBoundary(vols, combined=True, oriented=False)]
+        else:
+            axis = "xyz".index(b.faces[1])
+            plane = (hi if b.faces[0] == "+" else lo)[axis]
+            faces = [f for f in _faces_of(vols) if f in outer
+                     and all(abs(c - plane) < tol for c in occ.getBoundingBox(2, f)[axis::3])]
         if not faces:
             warnings.append(f"boundary {b.type} on '{b.target}' selected no faces")
         groups[(2, f"bc:{b.type}")] += faces
@@ -216,10 +232,10 @@ def _groups(project, names, meta, warnings):
 
 
 def _checks(project, values, names, meta, groups, warnings):
-    rad_targets = [b.target for b in project.boundaries if b.type == "radiation"]
+    rad_targets = {b.target for b in project.boundaries if b.type == "radiation" and b.target != "*"}
     for target in rad_targets:
         lo, hi = _bbox(names[target])
-        tol = 1e-9 + 1e-6 * max(h - l for l, h in zip(lo, hi))
+        tol = _tol(lo, hi)
         for n, dts in names.items():
             if n == target or not dts:
                 continue

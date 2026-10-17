@@ -45,6 +45,10 @@ conformal, labeled `.msh` + `.step`, plus a live 3D viewer.
   name and material unless `name` is given).
 - Sheet planes: `XY` size = (dx,dy); `XZ` = (dx,dz); `YZ` = (dy,dz).
 - Radiation boundary: `{"type":"radiation","target":"<air volume>","faces":"outer"}`.
+- Boundary types: `radiation`, `PEC`, `floquet`, `master1/slave1/master2/slave2` → group `bc:<type>`.
+  `faces`: `outer` | `all` | `+x -x +y -y +z -z` (outer faces of the target on that side of the model
+  bbox). `target: "*"` = all volumes (use it for periodic walls, which cut every layer).
+  Unit-cell template: `projects/me_dipole_dp_cell.json`.
 - Optional `mesh_size` variable sets the max element size (project units).
 - Sheets default to PEC; volumes default to air.
 
