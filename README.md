@@ -8,7 +8,7 @@ electromagnetic FEM solvers, and shows it live in the browser.
 - Regions and faces are labeled with **physical groups**: `mat:<material>`,
   `bc:radiation`, `bc:PEC`, `bc:floquet`, `bc:master1`/`bc:slave1`/â€¦, and `port:<n>`.
 - It exports a volume mesh (`.msh`) and CAD (`.step`).
-- The viewer (HFSS-modeler style) updates live whenever a project file changes.
+- The viewer  updates live whenever a project file changes.
 - **[Claude Code](https://claude.com/claude-code) writes the geometry for you.** Describe an antenna
   in plain English, or point it at a paper. It writes the project JSON, builds it, checks the
   result, and fixes any problems.
