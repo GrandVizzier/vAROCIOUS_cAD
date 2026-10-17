@@ -1,0 +1,8 @@
+gmsh>=4.12
+fastapi
+uvicorn[standard]
+pydantic>=2
+watchfiles
+matplotlib
+pytest
+httpx

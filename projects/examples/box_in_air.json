@@ -1,0 +1,13 @@
+{
+  "name": "box_in_air",
+  "units": "mm",
+  "description": "10 mm dielectric cube centred in a 40 mm air box",
+  "variables": { "a": "10", "pad": "15" },
+  "history": [
+    { "op": "box", "name": "block", "origin": ["-a/2", "-a/2", "-a/2"], "size": ["a", "a", "a"], "material": "FR4" },
+    { "op": "box", "name": "airbox", "origin": ["-a/2-pad", "-a/2-pad", "-a/2-pad"],
+      "size": ["a+2*pad", "a+2*pad", "a+2*pad"], "material": "air" }
+  ],
+  "boundaries": [ { "type": "radiation", "target": "airbox", "faces": "outer" } ],
+  "ports": []
+}

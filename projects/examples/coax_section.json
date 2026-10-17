@@ -1,0 +1,15 @@
+{
+  "name": "coax_section",
+  "units": "mm",
+  "description": "20 mm PTFE coax section: inner conductor bore subtracted from the dielectric",
+  "variables": { "r_out": "3.5", "r_in": "0.8", "len": "20" },
+  "history": [
+    { "op": "cylinder", "name": "dielectric", "origin": ["0", "0", "0"], "axis": ["0", "0", "len"],
+      "radius": "r_out", "material": "PTFE" },
+    { "op": "cylinder", "name": "inner", "origin": ["0", "0", "0"], "axis": ["0", "0", "len"],
+      "radius": "r_in", "material": "PEC" },
+    { "op": "subtract", "object": "dielectric", "tools": ["inner"] }
+  ],
+  "boundaries": [],
+  "ports": []
+}

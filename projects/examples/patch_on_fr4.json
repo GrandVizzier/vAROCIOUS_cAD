@@ -1,0 +1,17 @@
+{
+  "name": "patch_on_fr4",
+  "units": "mm",
+  "description": "2.4 GHz rectangular patch on FR4 in an air box",
+  "variables": { "f0": "2.4e9", "er": "4.4", "h": "1.6", "sub_w": "60", "sub_l": "60",
+                 "pw": "38", "pl": "29.4", "mesh_size": "8" },
+  "history": [
+    { "op": "box", "name": "substrate", "origin": ["-sub_w/2", "-sub_l/2", "0"],
+      "size": ["sub_w", "sub_l", "h"], "material": "FR4" },
+    { "op": "rectangle", "name": "patch", "origin": ["-pw/2", "-pl/2", "h"],
+      "size": ["pw", "pl"], "plane": "XY", "material": "PEC" },
+    { "op": "box", "name": "airbox", "origin": ["-60", "-60", "-40"],
+      "size": ["120", "120", "80"], "material": "air" }
+  ],
+  "boundaries": [ { "type": "radiation", "target": "airbox", "faces": "outer" } ],
+  "ports": []
+}

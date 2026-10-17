@@ -1,0 +1,16 @@
+{
+  "name": "dipole_halfwave",
+  "units": "mm",
+  "description": "1 GHz half-wave dipole (two thin PEC arms with a feed gap) in a spherical air region",
+  "variables": { "f0": "1e9", "lam": "c0/f0*1000", "L": "0.48*lam", "gap": "2", "r": "1",
+                 "arm": "(L-gap)/2", "R_air": "L/2+0.3*lam", "mesh_size": "lam/10" },
+  "history": [
+    { "op": "cylinder", "name": "arm_top", "origin": ["0", "0", "gap/2"], "axis": ["0", "0", "arm"],
+      "radius": "r", "material": "PEC" },
+    { "op": "cylinder", "name": "arm_bottom", "origin": ["0", "0", "-gap/2"], "axis": ["0", "0", "-arm"],
+      "radius": "r", "material": "PEC" },
+    { "op": "sphere", "name": "air", "center": ["0", "0", "0"], "radius": "R_air", "material": "air" }
+  ],
+  "boundaries": [ { "type": "radiation", "target": "air", "faces": "outer" } ],
+  "ports": []
+}
