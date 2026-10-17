@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Build, ProjectInfo, WsMsg, getBuild, listProjects } from "./api";
 import Sidebar from "./Sidebar";
+import VariablesPanel from "./VariablesPanel";
 import Viewport from "./Viewport";
 
 export default function App() {
@@ -66,6 +67,11 @@ export default function App() {
   }, [refreshProjects, refreshBuild]);
 
   const r = build?.result;
+  // edit what's in the file now (may differ from the last good build after an error)
+  const sourceVars = useMemo(() => {
+    try { return JSON.parse(build?.source ?? "").variables as Record<string, string>; }
+    catch { return undefined; }
+  }, [build?.source]);
   const toggle = (n: string) =>
     setHidden((h) => { const s = new Set(h); s.has(n) ? s.delete(n) : s.add(n); return s; });
 
@@ -98,6 +104,10 @@ export default function App() {
       </main>
 
       <aside className="panel right">
+        {r && current && (
+          <VariablesPanel id={current} variables={sourceVars ?? r.variables} values={r.values}
+                          readonly={!!projects.find((p) => p.id === current)?.readonly} />
+        )}
         <details>
           <summary>Project JSON</summary>
           <pre className="json">{build?.source}</pre>

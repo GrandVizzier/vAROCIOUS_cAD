@@ -1,0 +1,72 @@
+# EM Geometry Studio
+
+Geometry front end for a separate FEM electromagnetic solver. Project JSON → Gmsh OCC →
+conformal, labeled `.msh` + `.step`, plus a live 3D viewer.
+
+## Stack
+- Backend: Python 3.12 (`.venv`), FastAPI, `gmsh` (OCC kernel only, never `gmsh.model.geo`),
+  pydantic v2, watchfiles, WebSockets.
+- Frontend: Vite + React + TypeScript, `@react-three/fiber` + `@react-three/drei` (`frontend/`).
+
+## Commands (Windows, from repo root)
+- Run app: `.venv\Scripts\python scripts\dev.py` → http://localhost:5173 (API on :8000)
+- Build one project: `.venv\Scripts\python scripts\build.py projects/<name>.json --render`
+- Tests: `.venv\Scripts\python -m pytest`
+- Frontend type-check: `cd frontend; npx tsc --noEmit`
+
+## Layout
+- `backend/schema.py`: Project JSON schema (pydantic). **Read this first** for op fields.
+- `backend/expr.py`: safe AST expression evaluator, variable resolution, and cycle detection.
+- `backend/engine.py`: replay, fragment, physical groups, mesh, export, tessellation. All gmsh code lives here.
+- `backend/render.py`: matplotlib PNG views. `backend/server.py`: watcher, REST, `/ws`.
+- `scripts/build.py`: CLI (also what the server runs, in a subprocess). `scripts/dev.py`: starts both servers.
+- `projects/examples/`: reference projects and test fixtures. `out/`: build artifacts (gitignored).
+
+## Architecture rules (do not deviate)
+1. The Project JSON history is the single source of truth. The UI only shows triangles and edits `variables`.
+2. Track objects by NAME (`names: name -> [(dim, tag)]`), never by gmsh tag.
+3. After the history, ONE `occ.fragment` over everything → conformal shared faces. A fragment piece
+   claimed by several objects goes to the object with the **smallest original volume/area**
+   (a substrate inside an air box owns its region; the air box keeps the rest).
+4. Physical groups, assigned after fragment: volumes `mat:<material>`; metal sheets (PEC/copper)
+   `bc:PEC`; `boundaries` → `bc:radiation` / `bc:PEC`; `ports[i]` → `port:<i+1>` (1-based).
+5. Internal units SI (m, Hz). `units` in the JSON scales lengths only; frequencies stay in Hz.
+   UI displays mm / GHz.
+6. Every gmsh build runs in its own process with a timeout (gmsh is not thread-safe).
+
+## Project JSON conventions
+- Every numeric field is an expression string over `variables` (`+ - * / ** ( )`, `sqrt sin cos tan
+  asin acos atan exp log abs min max`, constants `pi`, `c0`). Variables can reference each other.
+- `units: "mm"` (default) → lengths in mm. `f0` and other frequencies in Hz (`"2.4e9"`).
+- Ops: `box{origin,size}`, `cylinder{origin(base centre),axis(vector incl. length),radius}`,
+  `sphere{center,radius}`, `rectangle{origin,size[2],plane}`, `disk{center,radius,plane}`,
+  `translate{target,vector}`, `rotate{target,origin,axis,angle(deg)}`,
+  `unite|subtract|intersect{object,tools[],name?}` (consumes the tools; the result keeps `object`'s
+  name and material unless `name` is given).
+- Sheet planes: `XY` size = (dx,dy); `XZ` = (dx,dz); `YZ` = (dy,dz).
+- Radiation boundary: `{"type":"radiation","target":"<air volume>","faces":"outer"}`.
+- Optional `mesh_size` variable sets the max element size (project units).
+- Sheets default to PEC; volumes default to air.
+
+## Generating geometry
+When the user describes a model:
+1. Write a valid Project JSON to `projects/<name>.json` (snake_case name; the `name` field equals the
+   file stem). Use `projects/examples/*.json` as format templates. **Never edit files in
+   `projects/examples/` unless asked.**
+2. Compute dimensions from physics where relevant, and store both the inputs and the derived values as
+   `variables` (expressions, so the user can tweak `f0`/`er`/`h` and everything follows):
+   - Patch (transmission-line model), with λ0 = c0/f0:
+     `W = c0/(2*f0)*sqrt(2/(er+1))`,
+     `eeff = (er+1)/2 + (er-1)/2*(1+12*h/W)**-0.5`,
+     `dL = 0.412*h*(eeff+0.3)*(W/h+0.264)/((eeff-0.258)*(W/h+0.8))`,
+     `L = c0/(2*f0*sqrt(eeff)) - 2*dL`. Keep SI ↔ mm consistent (e.g. `c0/f0*1000` for λ in mm).
+   - Inset feed: `y0 = L/pi*acos(sqrt(Z0/Rin_edge))`, where the edge resistance is estimated from
+     `G1 = W/(120*lambda0)` (for W < λ0): `Rin_edge ≈ 1/(2*G1)`.
+   - 50 Ω microstrip width: Hammerstad/Wheeler synthesis (`A`/`B` formulas).
+   - Dipole: total length ≈ 0.48 λ, with a small feed gap.
+   - Air box padding ≥ λ/4 at the lowest frequency from any metal.
+3. Run `.venv\Scripts\python scripts\build.py projects/<name>.json --render`, read the summary
+   (objects, groups, warnings), and look at `out/<name>_top.png`, `_front.png` and `_iso.png`. Fix errors,
+   warnings and mismatches until it builds cleanly and matches the request.
+4. Tell the user the key dimensions (mm) and every assumption. The running app picks the file up
+   automatically.

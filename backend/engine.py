@@ -243,13 +243,14 @@ def _tessellate(names, meta):
     objects = []
     for n, dts in names.items():
         faces = _faces_of(dts)
-        local, positions, indices = {}, [], []
+        positions, indices = [], []
         for f in faces:
+            local = {}  # vertices are per CAD face: sharp edges between faces, smooth within
             _, tri_nodes = gmsh.model.mesh.getElementsByType(2, f)
             for nt in tri_nodes:
                 nt = int(nt)
                 if nt not in local:
-                    local[nt] = len(local)
+                    local[nt] = len(positions) // 3
                     j = index[nt] * 3
                     positions += [round(float(c), 9) for c in coords[j:j + 3]]
                 indices.append(local[nt])

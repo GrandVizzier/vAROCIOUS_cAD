@@ -61,6 +61,11 @@ h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: v
 .btn:hover { border-color: var(--accent); }
 .json { font: 11px/1.4 ui-monospace, Consolas, monospace; white-space: pre-wrap; color: #b5bcc6; }
 summary { cursor: pointer; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin: 12px 0 6px; }
+.vars { width: 100%; border-collapse: collapse; }
+.vars td { padding: 2px 4px 2px 0; vertical-align: middle; }
+.vname { font-family: ui-monospace, Consolas, monospace; color: #9cdcfe; white-space: nowrap; }
+.vval { white-space: nowrap; text-align: right; }
+input[type="text"]:disabled { color: var(--muted); }
 input[type="text"] {
   width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
   border-radius: 4px; padding: 3px 6px; font: 12px ui-monospace, Consolas, monospace;
