@@ -8,11 +8,15 @@ conformal, labeled `.msh` + `.step`, plus a live 3D viewer.
   pydantic v2, watchfiles, WebSockets.
 - Frontend: Vite + React + TypeScript, `@react-three/fiber` + `@react-three/drei` (`frontend/`).
 
-## Commands (Windows, from repo root)
-- Run app: `.venv\Scripts\python scripts\dev.py` → http://localhost:5173 (API on :8000)
-- Build one project: `.venv\Scripts\python scripts\build.py projects/<name>.json --render`
-- Tests: `.venv\Scripts\python -m pytest`
-- Frontend type-check: `cd frontend; npx tsc --noEmit`
+## Commands (from repo root)
+Use the venv's Python: `.venv\Scripts\python` on Windows, `.venv/bin/python` on macOS/Linux
+(written `PY` below). If `.venv` doesn't exist yet, set it up first, following README §2.
+- Run app: `PY scripts/dev.py` → http://localhost:5173 (API on :8000)
+- Build one project: `PY scripts/build.py projects/<name>.json --render`
+- Tests: `PY -m pytest`
+- Frontend type-check: `cd frontend && npx tsc --noEmit`
+- Reading a paper (PDF): `PY -m pip install pymupdf`, then extract the text and render the figure
+  pages to PNGs under `out/` and look at them. Dimensions are usually in the figure captions.
 
 ## Layout
 - `backend/schema.py`: Project JSON schema (pydantic). **Read this first** for op fields.
@@ -69,7 +73,7 @@ When the user describes a model:
    - 50 Ω microstrip width: Hammerstad/Wheeler synthesis (`A`/`B` formulas).
    - Dipole: total length ≈ 0.48 λ, with a small feed gap.
    - Air box padding ≥ λ/4 at the lowest frequency from any metal.
-3. Run `.venv\Scripts\python scripts\build.py projects/<name>.json --render`, read the summary
+3. Run `PY scripts/build.py projects/<name>.json --render`, read the summary
    (objects, groups, warnings), and look at `out/<name>_top.png`, `_front.png` and `_iso.png`. Fix errors,
    warnings and mismatches until it builds cleanly and matches the request.
 4. Tell the user the key dimensions (mm) and every assumption. The running app picks the file up
