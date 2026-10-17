@@ -36,6 +36,5 @@ project automatically. You can then tweak variables in the UI.
 
 The schema lives in `backend/schema.py`, and `projects/examples/` holds templates.
 
-## License note
-Gmsh is GPL-licensed (with exceptions). This tool links to it via the `gmsh` Python package, so
-keep that in mind before distributing.
+## License
+GPL-3.0 (see `LICENSE`). Gmsh is GPL-licensed and this tool links to it via the `gmsh` Python package.
