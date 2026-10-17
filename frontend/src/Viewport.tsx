@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
-import { Bounds, GizmoHelper, GizmoViewport, Grid, OrbitControls } from "@react-three/drei";
+import { Bounds, Edges, GizmoHelper, GizmoViewport, Grid, OrbitControls } from "@react-three/drei";
 import { Obj, isTransparent, materialColor } from "./api";
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1); // Z-up
+
+const SELECT = "#e040fb"; // HFSS-style magenta selection
 
 function ObjectMesh({ obj, selected, wireframe, onSelect }: {
   obj: Obj; selected: boolean; wireframe: boolean; onSelect: (n: string) => void;
@@ -27,42 +29,43 @@ function ObjectMesh({ obj, selected, wireframe, onSelect }: {
         onClick={(e) => { e.stopPropagation(); onSelect(obj.name); }}
       >
         <meshStandardMaterial
-          color={materialColor(obj.material)}
-          emissive={selected ? "#ff5a1f" : "#000000"}
-          emissiveIntensity={selected ? 0.6 : 0}
+          color={selected ? SELECT : materialColor(obj.material)}
           transparent={air}
-          opacity={air ? (selected ? 0.25 : 0.1) : 1}
+          opacity={air ? (selected ? 0.2 : 0.06) : 1}
           depthWrite={!air}
           side={THREE.DoubleSide}
-          // sheets sit on volume faces: pull them forward to avoid z-fighting
-          polygonOffset={sheet}
-          polygonOffsetFactor={sheet ? -1 : 0}
-          polygonOffsetUnits={sheet ? -4 : 0}
-          metalness={obj.material === "PEC" ? 0.2 : 0}
-          roughness={0.5}
+          // sheets sit on volume faces: push volumes back so sheets (and all edge lines) win
+          polygonOffset={!sheet}
+          polygonOffsetFactor={sheet ? 0 : 2}
+          polygonOffsetUnits={sheet ? 0 : 4}
+          metalness={0}
+          roughness={0.6}
         />
+        {/* CAD feature edges (not mesh edges), like the HFSS modeler */}
+        <Edges threshold={20} color={selected ? "#8e00a8" : air ? "#55606e" : "#000000"} />
       </mesh>
       {wireframe && (
         <mesh geometry={geom} raycast={() => null}>
-          <meshBasicMaterial wireframe color="#000000" transparent opacity={air ? 0.15 : 0.35} />
+          <meshBasicMaterial wireframe color="#1f2a38" transparent opacity={air ? 0.12 : 0.3} />
         </mesh>
       )}
     </group>
   );
 }
 
-export default function Viewport({ fitKey, objects, hidden, selected, wireframe, onSelect }: {
+export default function Viewport({ fitKey, objects, hidden, selected, wireframe, grid, onSelect }: {
   fitKey: string; objects: Obj[]; hidden: Set<string>; selected: string | null;
-  wireframe: boolean; onSelect: (n: string | null) => void;
+  wireframe: boolean; grid: boolean; onSelect: (n: string | null) => void;
 }) {
   const visible = objects.filter((o) => !hidden.has(o.name) && o.indices.length);
   return (
-    <Canvas camera={{ position: [150, -150, 120], fov: 40, near: 0.1, far: 1e6 }}
+    // transparent canvas over the CSS gradient background (.viewport)
+    <Canvas gl={{ alpha: true, antialias: true }}
+            camera={{ position: [150, -150, 120], fov: 35, near: 0.1, far: 1e6 }}
             onPointerMissed={() => onSelect(null)}>
-      <color attach="background" args={["#14161a"]} />
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[1, -1, 2]} intensity={1.6} />
-      <directionalLight position={[-1, 1, -1]} intensity={0.4} />
+      <ambientLight intensity={0.9} />
+      <directionalLight position={[1, -1, 2]} intensity={1.4} />
+      <directionalLight position={[-1, 1, -1]} intensity={0.5} />
       <Bounds key={fitKey} fit clip observe={false} margin={1.3}>
         {/* geometry is in meters; display in mm */}
         <group scale={1000}>
@@ -72,11 +75,13 @@ export default function Viewport({ fitKey, objects, hidden, selected, wireframe,
           ))}
         </group>
       </Bounds>
-      <Grid rotation={[Math.PI / 2, 0, 0]} cellSize={10} sectionSize={50} infiniteGrid
-            fadeDistance={2000} cellColor="#2a2e35" sectionColor="#3b414b" />
+      {grid && (
+        <Grid rotation={[Math.PI / 2, 0, 0]} cellSize={10} sectionSize={50} infiniteGrid
+              fadeDistance={2000} cellColor="#b8c2cf" sectionColor="#8f9bab" />
+      )}
       <OrbitControls makeDefault />
-      <GizmoHelper alignment="bottom-right" margin={[70, 70]}>
-        <GizmoViewport axisColors={["#e5534b", "#57ab5a", "#539bf5"]} labelColor="#fff" />
+      <GizmoHelper alignment="bottom-left" margin={[70, 70]}>
+        <GizmoViewport axisColors={["#d32f2f", "#2e7d32", "#1565c0"]} labelColor="#fff" />
       </GizmoHelper>
     </Canvas>
   );

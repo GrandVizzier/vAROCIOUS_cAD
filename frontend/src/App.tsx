@@ -11,6 +11,7 @@ export default function App() {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
   const [wireframe, setWireframe] = useState(false);
+  const [grid, setGrid] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const currentRef = useRef(current);
   currentRef.current = current;
@@ -88,15 +89,21 @@ export default function App() {
         <div className="toolbar">
           <span className="title">{r?.name ?? current ?? "—"}</span>
           <span className="muted">{r?.description}</span>
-          <label className="push">
-            <input type="checkbox" checked={wireframe} onChange={(e) => setWireframe(e.target.checked)} />
-            mesh wireframe
-          </label>
+          <span className="push">
+            <label>
+              <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.target.checked)} />
+              grid
+            </label>
+            <label>
+              <input type="checkbox" checked={wireframe} onChange={(e) => setWireframe(e.target.checked)} />
+              mesh wireframe
+            </label>
+          </span>
         </div>
         <div className="viewport">
           {r ? (
             <Viewport fitKey={current ?? ""} objects={r.objects} hidden={hidden}
-                      selected={selected} wireframe={wireframe} onSelect={setSelected} />
+                      selected={selected} wireframe={wireframe} grid={grid} onSelect={setSelected} />
           ) : (
             <div className="empty muted">{build?.status === "error" ? "No successful build yet" : "Building…"}</div>
           )}
