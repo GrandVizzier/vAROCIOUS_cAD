@@ -21,6 +21,18 @@ from .schema import (Boolean, Box, Cylinder, Disk, Project, Rectangle, Rotate, S
 
 occ = gmsh.model.occ
 METALS = {"PEC", "copper", "Cu"}
+# Built-in dielectrics (nominal datasheet values); projects override/add via "materials".
+MATERIAL_LIBRARY = {
+    "air": {"epsr": 1.0, "tand": 0.0},
+    "vacuum": {"epsr": 1.0, "tand": 0.0},
+    "FR4": {"epsr": 4.4, "tand": 0.02},
+    "RO4003C": {"epsr": 3.55, "tand": 0.0027},
+    "RO4350B": {"epsr": 3.66, "tand": 0.0037},
+    "RO5880": {"epsr": 2.2, "tand": 0.0009},
+    "RO4450F": {"epsr": 3.52, "tand": 0.004},
+    "TLY5": {"epsr": 2.2, "tand": 0.0009},
+    "PTFE": {"epsr": 2.1, "tand": 0.0002},
+}
 
 
 class BuildError(Exception):
@@ -159,8 +171,9 @@ def _faces_of(dts):
     for d, t in dts:
         if d == 2:
             faces.append(t)
-        elif d == 3:
-            faces += [abs(f) for _, f in gmsh.model.getBoundary([(3, t)], combined=False, oriented=False)]
+    vols = [dt for dt in dts if dt[0] == 3]
+    if vols:  # outer shell only: faces shared by an object's own pieces cancel out
+        faces += [abs(f) for _, f in gmsh.model.getBoundary(vols, combined=True, oriented=False)]
     return list(dict.fromkeys(faces))
 
 
@@ -186,6 +199,8 @@ def _groups(project, names, meta, warnings):
                 groups[(3, f"mat:{mat}")].append(t)
             elif d == 2 and mat in METALS:
                 groups[(2, "bc:PEC")].append(t)
+        if mat in METALS:  # surfaces of metal volumes are PEC for the solver
+            groups[(2, "bc:PEC")] += [f for f in _faces_of([dt for dt in dts if dt[0] == 3])]
         if dts and dts[0][0] == 2 and mat not in METALS and n not in port_targets:
             warnings.append(f"sheet '{n}' has non-metal material '{mat}'; no physical group assigned")
 
@@ -224,11 +239,97 @@ def _groups(project, names, meta, warnings):
             raise BuildError(f"port {i}: '{p.target}' is not a sheet")
         groups[(2, f"port:{i}")] += faces
 
+    ids = {}
     for (d, name), tags in groups.items():
         tags[:] = list(dict.fromkeys(tags))
         if tags:
-            gmsh.model.addPhysicalGroup(d, tags, name=name)
-    return groups
+            ids[(d, name)] = gmsh.model.addPhysicalGroup(d, tags, name=name)
+    return groups, ids
+
+
+def _check_ports(project, values, names, meta):
+    """Lumped port sanity: flat axis-aligned sheet, direction in its plane, both ends on metal."""
+    if not project.ports:
+        return []
+    lo_m, hi_m = _bbox(gmsh.model.getEntities(2) + gmsh.model.getEntities(3))
+    tol = _tol(lo_m, hi_m)
+    metal = [dt for n, dts in names.items() if meta[n]["material"] in METALS for dt in dts]
+    ports = []
+    for i, p in enumerate(project.ports, 1):
+        sheets = [dt for dt in names[p.target] if dt[0] == 2]
+        # exact corners from the sheet's vertices (OCC bboxes are padded)
+        pts = [gmsh.model.getValue(0, t, []) for _, t in
+               gmsh.model.getBoundary(sheets, combined=False, oriented=False, recursive=True)]
+        lo, hi = [float(min(q[k] for q in pts)) for k in range(3)], [float(max(q[k] for q in pts)) for k in range(3)]
+        flat = [k for k in range(3) if hi[k] - lo[k] < tol]
+        axis = "xyz".index(p.direction[1])
+        problems = []
+        if len(flat) != 1:
+            problems.append(f"'{p.target}' is not a flat axis-aligned sheet")
+        elif axis == flat[0]:
+            problems.append(f"direction {p.direction} is normal to the port sheet; it must lie in the sheet")
+        else:
+            curves = [abs(c) for _, c in gmsh.model.getBoundary(sheets, combined=True, oriented=False)]
+            for end, coord in (("start", lo[axis]), ("end", hi[axis])):
+                edge = [c for c in curves
+                        if all(abs(v - coord) < tol for v in occ.getBoundingBox(1, c)[axis::3])]
+                if not any(occ.getDistance(1, c, d, t)[0] < tol for c in edge for d, t in metal):
+                    problems.append(f"{end} edge at {'xyz'[axis]} = {coord * 1e3:.4g} mm does not touch metal")
+        try:
+            impedance = evaluate(p.impedance, values)
+        except ExprError as e:
+            problems.append(f"impedance: {e}")
+            impedance = None
+        ports.append({"index": i, "target": p.target, "type": p.type, "direction": p.direction,
+                      "impedance": impedance, "excite": p.excite, "start": lo, "stop": hi,
+                      "ok": not problems, "problems": problems})
+    return ports
+
+
+def _features():
+    """Grid-line candidates for structured-grid solvers: every curve and face bbox extent."""
+    coords = [set(), set(), set()]
+    for d, t in gmsh.model.getEntities(1) + gmsh.model.getEntities(2):
+        b = occ.getBoundingBox(d, t)
+        for k in range(3):
+            coords[k].update((round(b[k], 9), round(b[k + 3], 9)))
+    return {a: sorted(c) for a, c in zip("xyz", coords)}
+
+
+def _simulation(project, values, names, meta, warnings):
+    """Evaluate the simulation block (Hz) and resolve the materials it needs."""
+    used = {meta[n]["material"] for n in names}
+    materials = {}
+    for m in sorted(used):
+        if m in METALS:
+            materials[m] = {"metal": True}
+        elif m in project.materials:
+            spec = project.materials[m]
+            try:
+                materials[m] = {"metal": False, "epsr": evaluate(spec.epsr, values),
+                                "tand": evaluate(spec.tand, values)}
+            except ExprError as e:
+                raise BuildError(f"materials.{m}: {e}") from None
+        elif m in MATERIAL_LIBRARY:
+            materials[m] = {"metal": False, **MATERIAL_LIBRARY[m]}
+        elif m != "port":
+            materials[m] = None
+    sim = project.simulation
+    if sim is None:
+        return materials, None
+    for m, v in materials.items():
+        if v is None:
+            warnings.append(f"material '{m}' is not in the library; add it to \"materials\" to simulate")
+    try:
+        s = {**sim.model_dump(),
+             "sweep": {"start": evaluate(sim.sweep.start, values), "stop": evaluate(sim.sweep.stop, values),
+                       "points": sim.sweep.points},
+             "fields_at": [evaluate(f, values) for f in sim.fields_at]}
+    except ExprError as e:
+        raise BuildError(f"simulation: {e}") from None
+    if not 0 < s["sweep"]["start"] < s["sweep"]["stop"]:
+        raise BuildError("simulation.sweep: need 0 < start < stop (Hz)")
+    return materials, s
 
 
 def _checks(project, values, names, meta, groups, warnings):
@@ -299,8 +400,12 @@ def build(path, out_dir="out", mesh=True):
         for n in [n for n, d in names.items() if not d]:
             warnings.append(f"'{n}' was fully overlapped by smaller objects and has no region left")
             del names[n]
-        groups = _groups(project, names, meta, warnings)
+        groups, group_ids = _groups(project, names, meta, warnings)
         _checks(project, values, names, meta, groups, warnings)
+        ports = _check_ports(project, values, names, meta)
+        warnings += [f"port {p['index']} ('{p['target']}'): {msg}" for p in ports for msg in p["problems"]]
+        features = _features()
+        materials, simulation = _simulation(project, values, names, meta, warnings)
 
         stats = {"volumes": len(gmsh.model.getEntities(3)), "surfaces": len(gmsh.model.getEntities(2))}
         out = Path(out_dir)
@@ -334,7 +439,12 @@ def build(path, out_dir="out", mesh=True):
         "variables": {k: str(v) for k, v in project.variables.items()},
         "values": values,
         "objects": objects,
-        "groups": [{"name": n, "dim": d, "count": len(t), "tags": t} for (d, n), t in groups.items() if t],
+        "groups": [{"name": n, "dim": d, "id": group_ids[(d, n)], "count": len(t), "tags": t}
+                   for (d, n), t in groups.items() if t],
+        "ports": ports,
+        "materials": materials,
+        "simulation": simulation,
+        "features": features,
         "stats": stats,
         "warnings": warnings,
         "files": files,

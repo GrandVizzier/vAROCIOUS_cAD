@@ -20,6 +20,16 @@ def summary(r):
     lines += ["", "Physical groups:"]
     for g in r["groups"]:
         lines.append(f"  {g['name']:<16} dim {g['dim']}  {g['count']} entit{'y' if g['count'] == 1 else 'ies'}")
+    if r["ports"]:
+        lines += ["", "Ports:"]
+        for p in r["ports"]:
+            status = "OK" if p["ok"] else "PROBLEM: " + "; ".join(p["problems"])
+            lines.append(f"  port {p['index']}  {p['target']:<12} {p['type']} {p['impedance']:g} ohm "
+                         f"{p['direction']}  {status}")
+    if r["simulation"]:
+        sw = r["simulation"]["sweep"]
+        lines.append(f"Simulation: {r['simulation']['solver']}, sweep {sw['start'] / 1e9:g}-"
+                     f"{sw['stop'] / 1e9:g} GHz ({sw['points']} pts)")
     s = r["stats"]
     lines += ["", f"Geometry: {s['volumes']} volumes, {s['surfaces']} surfaces"]
     if "nodes" in s:

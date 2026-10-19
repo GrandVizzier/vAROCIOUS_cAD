@@ -93,7 +93,41 @@ class Boundary(BaseModel):
 
 class Port(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    target: str             # name of a sheet object
+    target: str             # name of a flat, axis-aligned sheet bridging two conductors
+    type: Literal["lumped"] = "lumped"
+    impedance: Expr = "50"  # ohm
+    direction: Literal["+x", "-x", "+y", "-y", "+z", "-z"] = "+z"  # in the sheet, metal to metal
+    excite: bool = True
+
+
+class Material(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    epsr: Expr = "1"
+    tand: Expr = "0"
+
+
+class Sweep(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    start: Expr             # Hz
+    stop: Expr              # Hz
+    points: Annotated[int, Field(ge=2, le=10001)] = 401
+
+
+class MeshSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    cells_per_wavelength: Annotated[int, Field(ge=6, le=100)] = 20
+    ratio: Annotated[float, Field(ge=1.05, le=2.0)] = 1.4
+
+
+class Simulation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    solver: Literal["openems"] = "openems"
+    sweep: Sweep
+    fields_at: list[Expr] = []          # Hz; frequencies for E/H field snapshots
+    mesh: MeshSettings = MeshSettings()
+    absorber: Literal["PML_8", "MUR"] = "PML_8"
+    end_criteria_db: Annotated[float, Field(le=-10, ge=-80)] = -40
+    max_timesteps: Annotated[int, Field(ge=1000)] = 300000
 
 
 class Project(BaseModel):
@@ -105,6 +139,8 @@ class Project(BaseModel):
     history: Annotated[list[Step], Field(min_length=1)]
     boundaries: list[Boundary] = []
     ports: list[Port] = []
+    materials: dict[str, Material] = {}  # overrides/additions to the built-in library
+    simulation: Simulation | None = None
 
     @model_validator(mode="after")
     def unique_names(self):

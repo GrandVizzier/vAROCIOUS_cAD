@@ -43,5 +43,10 @@
       "size": ["sub_w+2*pad", "sub_l+2*pad", "h+2*pad"], "material": "air" }
   ],
   "boundaries": [ { "type": "radiation", "target": "airbox", "faces": "outer" } ],
-  "ports": [ { "target": "port1" } ]
+  "ports": [ { "target": "port1", "type": "lumped", "impedance": "Z0", "direction": "+z" } ],
+  "simulation": {
+    "solver": "openems",
+    "sweep": { "start": "2.0e9", "stop": "2.8e9", "points": 401 },
+    "fields_at": ["f0"]
+  }
 }
