@@ -29,8 +29,8 @@ def preflight(result):
     problems = []
     sim = result.get("simulation")
     if not sim:
-        return ['no "simulation" block in the project']
-    if sim["solver"] != "openems":
+        problems.append('no "simulation" block in the project')
+    elif sim["solver"] != "openems":
         problems.append(f"solver '{sim['solver']}' is not supported")
     groups = {g["name"] for g in result["groups"]}
     bad = sorted(g for g in groups if g.startswith(UNSUPPORTED))

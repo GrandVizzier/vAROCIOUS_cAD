@@ -40,6 +40,8 @@ def test_preflight_ok_and_failures(result):
     per = {**result, "groups": result["groups"] + [{"name": "bc:master1"}]}
     assert any("Floquet" in p for p in S.preflight(per))
     assert S.preflight({**result, "simulation": None}) == ['no "simulation" block in the project']
+    both = S.preflight({**per, "simulation": None})   # every problem is reported, not just the first
+    assert len(both) == 2 and any("Floquet" in p for p in both)
     unknown = {**result, "materials": {**result["materials"], "Unobtainium": None}}
     assert any("Unobtainium" in p for p in S.preflight(unknown))
 

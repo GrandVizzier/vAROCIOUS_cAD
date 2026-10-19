@@ -9,6 +9,9 @@ electromagnetic FEM solvers, and shows it live in the browser.
   `bc:radiation`, `bc:PEC`, `bc:floquet`, `bc:master1`/`bc:slave1`/…, and `port:<n>`.
 - It exports a volume mesh (`.msh`) and CAD (`.step`).
 - The viewer  updates live whenever a project file changes.
+- **Simulate it** with the open-source FDTD solver [openEMS](https://openems.de): set up a frequency
+  sweep in the Analysis tab, then view S-parameters, a Smith chart, impedance, VSWR and E-field
+  overlays. The UI is laid out like HFSS.
 - **[Claude Code](https://claude.com/claude-code) writes the geometry for you.** Describe an antenna
   in plain English, or point it at a paper. It writes the project JSON, builds it, checks the
   result, and fixes any problems.
@@ -19,12 +22,14 @@ electromagnetic FEM solvers, and shows it live in the browser.
 
 | Tool | Version | Check | Install |
 |---|---|---|---|
-| Python | 3.11+ | `python --version` | https://www.python.org/downloads/ (Windows: `winget install Python.Python.3.12`) |
+| Python | **3.13** (3.11+ without simulation) | `python --version` | https://www.python.org/downloads/ (Windows: `winget install Python.Python.3.13`) |
 | Node.js | 18+ | `node --version` | https://nodejs.org (Windows: `winget install OpenJS.NodeJS.LTS`) |
 | Git | any | `git --version` | https://git-scm.com |
 | Claude Code | latest | `claude --version` | https://docs.claude.com/en/docs/claude-code (optional, but it's the point) |
 
 You don't need a separate Gmsh or OpenCascade install. The `gmsh` pip wheel bundles both.
+On Windows, openEMS is installed by a script (step 2); its packages are built for Python 3.13 and
+3.14 only, which is why 3.13 is required.
 
 ## 2. Setup
 
@@ -35,8 +40,9 @@ cd vAROCIOUS_cAD
 
 **Windows (PowerShell)**
 ```powershell
-py -3.12 -m venv .venv
+py -3.13 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python scripts\install_openems.py   # downloads openEMS 0.37 into tools\openEMS
 cd frontend; npm install; cd ..
 ```
 
@@ -54,6 +60,11 @@ Check that it works by running the test suite. It builds all the example geometr
 
 > Linux note: Gmsh may need a few system libraries (`libglu1-mesa`, `libxft2`, `libxinerama1`).
 > If `import gmsh` fails, install them with your package manager.
+>
+> macOS / Linux simulation: build openEMS with its Python extensions (see the
+> [openEMS install docs](https://docs.openems.de/install/index.html)), install them into `.venv`, and
+> set `CSXCAD_INSTALL_PATH` to the openEMS install folder. Everything except simulation works
+> without it.
 
 ## 3. Run the app
 
@@ -66,12 +77,29 @@ This starts the backend (FastAPI on :8000) and the frontend (Vite on :5173). Ope
 
 | Where | What |
 |---|---|
-| Left panel | Project list (newest first, auto-selects new files) and an object tree with visibility toggles |
-| Center | 3D view: left-drag to orbit, right-drag to pan, scroll to zoom, click an object to select it. Toggles for grid and mesh wireframe |
-| Right panel | **Variables:** edit a value and press Enter. It's saved to the JSON file and the model rebuilds. Below that, the read-only project JSON |
-| Bottom bar | Build status, mesh stats, physical groups, warnings, and `.msh` / `.step` downloads |
+| Tabs (top right) | **3D Modeler**, **Analysis**, **Results** |
+| Project Manager (left) | Project picker, then the design tree: Model (solids, sheets; visibility toggles), Boundaries, Excitations (✓ valid / ⚠ problem), Analysis (setup and sweep), Results (reports), Field Overlays |
+| 3D Modeler | Left-drag to orbit, right-drag to pan, scroll to zoom, click an object to select it. Toggles for grid, mesh wireframe and E field |
+| Properties (right) | **Variables:** edit a value and press Enter. It's saved to the JSON file and the model rebuilds. Below that, the read-only project JSON |
+| Analysis | Driven solution setup (sweep, field frequencies, mesh density, absorber, convergence), Validation Check, and **Analyze** / Abort |
+| Results | dB(S), S phase, Smith chart, input impedance and VSWR, with markers and a hover readout |
+| Message Manager / Progress (bottom) | Warnings, errors and solver messages; the analysis progress bar; `.msh` / `.step` downloads |
 
 If a build fails, the last good geometry stays on screen and the error appears in a red banner.
+
+### Simulating (openEMS)
+
+1. The project needs a **port** and a **simulation** block. Claude adds both when you ask for an
+   antenna "ready to simulate". `projects/patch_inset_2p4ghz.json` is a full example.
+2. Open **Analysis**, check the sweep, then press **Analyze**. One broadband FDTD run per excited
+   port typically takes 1–5 minutes; progress shows in the bottom right.
+3. Open **Results** for the reports, or tick **E field** in the 3D Modeler. The field plot is
+   |E| (V/m, for 1 W incident) on a cut plane, plus arrows. You can move the plane, pick the
+   frequency and animate the phase.
+
+From the command line: `.venv\Scripts\python scripts\simulate.py projects\<name>.json`.
+openEMS can't do periodic or Floquet boundaries, so the reflectarray unit cell can only be built,
+not simulated.
 
 ## 4. Generate geometry with Claude Code
 
@@ -147,11 +175,14 @@ example with master/slave walls and a Floquet port.
 ## 7. Repository layout
 
 ```
-backend/    schema.py, expr.py (safe evaluator), engine.py (all Gmsh code), render.py, server.py, tests/
-scripts/    build.py (CLI, also used by the server), dev.py (starts both servers)
+backend/    schema.py, expr.py (safe evaluator), engine.py (all Gmsh code), openems_sim.py (solver),
+            render.py, server.py, tests/
+scripts/    build.py / simulate.py (CLIs, also used by the server), dev.py (starts both servers),
+            install_openems.py
 frontend/   Vite + React + TypeScript + react-three-fiber viewer
 projects/   your project JSON files; examples/ are reference fixtures (read-only in the UI)
-out/        build outputs (gitignored)
+out/        build outputs and out/sims/<name>/ simulation results (gitignored)
+tools/      openEMS install (gitignored)
 CLAUDE.md   context and instructions for Claude Code
 ```
 

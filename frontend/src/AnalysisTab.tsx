@@ -33,7 +33,9 @@ export default function AnalysisTab({ id, r, source, readonly, sim, onError }: {
     try { await setSimulation(id, s); setDirty(false); } catch (e) { onError(String(e)); }
   };
   const running = sim?.status === "running";
-  const problems = [...(sim?.problems ?? [])];
+  // port problems are listed under Excitations already
+  const problems = (sim?.problems ?? []).filter((p) => !p.startsWith("port "));
+  const portsOk = r.ports.length > 0 && r.ports.every((p) => p.ok);
   if (dirty) problems.push("Setup has unsaved changes");
   if (!stored) problems.push("No setup saved yet");
   const analyze = async () => {
@@ -105,9 +107,7 @@ export default function AnalysisTab({ id, r, source, readonly, sim, onError }: {
       <div className="dialog side">
         <div className="dialog-title">Validation Check</div>
         <ul className="checks">
-          <li className={r.ports.length && r.ports.every((p) => p.ok) ? "ok" : "bad"}>
-            {r.ports.length && r.ports.every((p) => p.ok) ? "✓" : "⚠"} Excitations ({r.ports.length})
-          </li>
+          <li className={portsOk ? "ok" : "bad"}>{portsOk ? "✓" : "⚠"} Excitations ({r.ports.length})</li>
           {r.ports.flatMap((p) => p.problems.map((m) => <li key={p.index + m} className="bad sub">port {p.index}: {m}</li>))}
           <li className={problems.length ? "bad" : "ok"}>{problems.length ? "⚠" : "✓"} Analysis setup</li>
           {problems.map((m) => <li key={m} className="bad sub">{m}</li>)}
@@ -118,7 +118,7 @@ export default function AnalysisTab({ id, r, source, readonly, sim, onError }: {
         <div className="dialog-buttons">
           {running
             ? <button className="danger" onClick={() => cancelSim(id).catch((e) => onError(String(e)))}>Abort</button>
-            : <button className="primary" disabled={problems.length > 0} onClick={analyze}>Analyze</button>}
+            : <button className="primary" disabled={problems.length > 0 || !portsOk} onClick={analyze}>Analyze</button>}
         </div>
         {sim && sim.status !== "idle" && (
           <div className="progress-box">

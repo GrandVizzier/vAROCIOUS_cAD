@@ -4,8 +4,8 @@ Geometry front end for a separate FEM electromagnetic solver. Project JSON → G
 conformal, labeled `.msh` + `.step`, plus a live 3D viewer.
 
 ## Stack
-- Backend: Python 3.12 (`.venv`), FastAPI, `gmsh` (OCC kernel only, never `gmsh.model.geo`),
-  pydantic v2, watchfiles, WebSockets.
+- Backend: Python 3.13 (`.venv`), FastAPI, `gmsh` (OCC kernel only, never `gmsh.model.geo`),
+  pydantic v2, watchfiles, WebSockets. Solver: openEMS 0.37 (`tools/openEMS`, `backend/openems_sim.py`).
 - Frontend: Vite + React + TypeScript, `@react-three/fiber` + `@react-three/drei` (`frontend/`).
 
 ## Commands (from repo root)
@@ -13,6 +13,8 @@ Use the venv's Python: `.venv\Scripts\python` on Windows, `.venv/bin/python` on 
 (written `PY` below). If `.venv` doesn't exist yet, set it up first, following README §2.
 - Run app: `PY scripts/dev.py` → http://localhost:5173 (API on :8000)
 - Build one project: `PY scripts/build.py projects/<name>.json --render`
+- Simulate one project: `PY scripts/simulate.py projects/<name>.json` (needs openEMS:
+  `PY scripts/install_openems.py` on Windows)
 - Tests: `PY -m pytest`
 - Frontend type-check: `cd frontend && npx tsc --noEmit`
 - Reading a paper (PDF): `PY -m pip install pymupdf`, then extract the text and render the figure
@@ -55,6 +57,30 @@ Use the venv's Python: `.venv\Scripts\python` on Windows, `.venv/bin/python` on 
   Unit-cell template: `projects/me_dipole_dp_cell.json`.
 - Optional `mesh_size` variable sets the max element size (project units).
 - Sheets default to PEC; volumes default to air.
+
+## Ports & simulation (openEMS, FDTD)
+- A project is simulated when it has `ports` and a `simulation` block (template:
+  `projects/patch_inset_2p4ghz.json`; dipole gap port: `projects/examples/dipole_halfwave.json`).
+- **Lumped port** = a flat, axis-aligned sheet (`material: "port"`) that bridges two conductors, plus
+  `{"target": "<sheet>", "type": "lumped", "impedance": "50", "direction": "+z"}`.
+  `direction` lies IN the sheet and points from one conductor to the other. Width ≈ trace/arm width.
+  - Microstrip edge feed: XZ (or YZ) sheet at the trace end, from ground (z=0) to the trace (z=h), `+z`.
+  - Dipole / gap feed: sheet spanning the gap between the two arms, direction along the dipole axis.
+  - The build checks both ends of the port touch metal and that the direction lies in the sheet; any
+    `PROBLEM` in the build summary's **Ports** section must be fixed before simulating.
+- `simulation`: `sweep` start/stop are Hz expressions (`"0.8*f0"`), `points`, `fields_at` (Hz list),
+  `mesh.cells_per_wavelength` (20 default; 15 for quick checks), `absorber` `PML_8`|`MUR`,
+  `end_criteria_db` (-40). Keep ≥ λ/4 air (λ at the lowest frequency) between metal and the air box.
+- Materials: built-in `air FR4 RO4003C RO4350B RO5880 RO4450F TLY5 PTFE` (`backend/engine.py`
+  `MATERIAL_LIBRARY`); anything else goes in project `"materials": {"Name": {"epsr": "..", "tand": ".."}}`
+  (take values from the paper/datasheet). Metals (`PEC`, `copper`) are perfect conductors.
+- openEMS limits: no periodic/master-slave/Floquet (the build is fine, `simulate.py` refuses), sheets
+  must be axis-aligned; curved parts are staircased on the grid.
+- Run `PY scripts/simulate.py projects/<name>.json` (minutes; prints cells, runtime, S11 minimum and
+  −10 dB band, Z at f0). Check the resonance against the target and |S11| < −10 dB; if the
+  resonance is off, rescale the resonant dimension (≈ 1/f) in `variables` and re-run. Report the
+  numbers you got, not the design targets. Results land in `out/sims/<name>/`; the app's Results
+  tab and E-field overlay pick them up.
 
 ## Generating geometry
 When the user describes a model:

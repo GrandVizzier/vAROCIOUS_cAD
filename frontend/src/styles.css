@@ -133,6 +133,7 @@ button:hover:not(:disabled), .btn:hover { border-color: var(--accent); backgroun
 button:disabled { color: #a0a0a0; cursor: default; }
 button.primary { background: linear-gradient(#2b88d8, #0a64ad); color: #fff; border-color: #0a5596; }
 button.danger { background: linear-gradient(#f05a5a, #c50f1f); color: #fff; border-color: #a00; }
+button.primary:disabled, button.danger:disabled { background: #e6e6e6; color: #a0a0a0; border-color: #c8c8c8; }
 
 /* analysis tab: dialog look */
 .analysis { display: flex; gap: 12px; padding: 12px; overflow: auto; align-items: flex-start; }
