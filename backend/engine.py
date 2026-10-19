@@ -421,18 +421,12 @@ def build(path, out_dir="out", mesh=True):
             if "mesh_size" in values:
                 gmsh.option.setNumber("Mesh.MeshSizeMax", values["mesh_size"] * scale)
             gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 12)
-            gmsh.option.setNumber("General.NumThreads", 0)  # all cores
-            # HXT (parallel Delaunay) is ~2x faster on big stacks but occasionally fails
-            # nondeterministically; fall back to the default 3D Delaunay
-            for algo in (10, 1):
-                gmsh.option.setNumber("Mesh.Algorithm3D", algo)
-                try:
-                    gmsh.model.mesh.generate(3)
-                    break
-                except Exception as e:
-                    gmsh.model.mesh.clear()
-                    if algo == 1:
-                        raise BuildError(f"meshing failed: {e}") from None
+            # default 3D Delaunay; HXT (Algorithm3D=10) was tried: ~2x faster but produced
+            # corrupt meshes (elements on node 0) on the multilayer TCDA cell
+            try:
+                gmsh.model.mesh.generate(3)
+            except Exception as e:
+                raise BuildError(f"meshing failed: {e}") from None
             stats["nodes"] = len(gmsh.model.mesh.getNodes()[0])
             stats["tetrahedra"] = len(gmsh.model.mesh.getElementsByType(4)[0])
             files["msh"] = str(out / f"{project.name}.msh")
