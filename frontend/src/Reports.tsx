@@ -3,8 +3,10 @@ import type { MouseEvent } from "react";
 import { SimResults } from "./api";
 import { REPORTS, Report } from "./ProjectTree";
 
-// HFSS default trace colours
-const COLORS = ["#ff0000", "#0000ff", "#008000", "#c000c0", "#008b8b", "#b8860b", "#000000"];
+// HFSS default trace colours (brighter set on the dark theme)
+const LIGHT = ["#ff0000", "#0000ff", "#008000", "#c000c0", "#008b8b", "#b8860b", "#000000"];
+const DARK = ["#ff5555", "#5c9dff", "#4ec94e", "#e070e0", "#4fd0d0", "#e0b050", "#dddddd"];
+const palette = () => (document.documentElement.dataset.theme === "dark" ? DARK : LIGHT);
 type Trace = { name: string; x: number[]; y: number[] };
 
 function ticks(lo: number, hi: number, n = 6) {
@@ -23,6 +25,7 @@ function XYPlot({ title, xLabel, yLabel, traces, markMin }: {
   title: string; xLabel: string; yLabel: string; traces: Trace[]; markMin?: boolean;
 }) {
   const W = 900, H = 500, L = 80, R = 230, T = 40, B = 60;
+  const COLORS = palette();
   const xs = traces[0].x;
   const ys = traces.flatMap((t) => t.y).filter(Number.isFinite);
   let ylo = Math.min(...ys), yhi = Math.max(...ys);
@@ -46,7 +49,7 @@ function XYPlot({ title, xLabel, yLabel, traces, markMin }: {
   const m1 = markMin ? traces[0].y.indexOf(Math.min(...traces[0].y)) : -1;
   return (
     <svg className="plot" viewBox={`0 0 ${W} ${H}`} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
-      <rect x={0} y={0} width={W} height={H} fill="#fff" />
+      <rect x={0} y={0} width={W} height={H} className="pbg" />
       <text x={L} y={24} className="ptitle">{title}</text>
       <text x={W - 12} y={24} className="pbrand" textAnchor="end">openEMS · FDTD</text>
       {yt.map((v) => <g key={"y" + v}>
@@ -68,7 +71,7 @@ function XYPlot({ title, xLabel, yLabel, traces, markMin }: {
         ))}
       </g>
       {m1 >= 0 && <g>
-        <polygon points={`${px(xs[m1])},${py(traces[0].y[m1]) - 2} ${px(xs[m1]) - 6},${py(traces[0].y[m1]) - 12} ${px(xs[m1]) + 6},${py(traces[0].y[m1]) - 12}`} fill="#000" />
+        <polygon points={`${px(xs[m1])},${py(traces[0].y[m1]) - 2} ${px(xs[m1]) - 6},${py(traces[0].y[m1]) - 12} ${px(xs[m1]) + 6},${py(traces[0].y[m1]) - 12}`} className="mkfill" />
         <text x={px(xs[m1]) + 8} y={py(traces[0].y[m1]) - 12} className="mk">m1</text>
       </g>}
       {/* legend ("Curve Info") */}
@@ -101,6 +104,7 @@ function XYPlot({ title, xLabel, yLabel, traces, markMin }: {
 
 function SmithChart({ f, gammas, z0 }: { f: number[]; gammas: { name: string; re: number[]; im: number[] }[]; z0: number }) {
   const S = 520, C = S / 2, Rr = S / 2 - 40;
+  const COLORS = palette();
   const X = (gr: number) => C + gr * Rr, Y = (gi: number) => C - gi * Rr;
   const rs = [0.2, 0.5, 1, 2, 5], xsv = [0.2, 0.5, 1, 2, 5];
   const [hover, setHover] = useState<number | null>(null);
@@ -134,7 +138,7 @@ function SmithChart({ f, gammas, z0 }: { f: number[]; gammas: { name: string; re
   };
   return (
     <svg className="plot" viewBox={`0 0 ${S + 260} ${S}`} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
-      <rect width={S + 260} height={S} fill="#fff" />
+      <rect width={S + 260} height={S} className="pbg" />
       <defs><clipPath id="uc"><circle cx={C} cy={C} r={Rr} /></clipPath></defs>
       <g clipPath="url(#uc)">
         {rs.map((r) => <circle key={"r" + r} cx={X(r / (1 + r))} cy={C} r={Rr / (1 + r)} className="sgrid" />)}
@@ -152,9 +156,9 @@ function SmithChart({ f, gammas, z0 }: { f: number[]; gammas: { name: string; re
       })}
       {gammas.map((g, k) => <polyline key={g.name} fill="none" stroke={COLORS[k]} strokeWidth={1.6}
         points={g.re.map((r, i) => `${X(r)},${Y(g.im[i])}`).join(" ")} />)}
-      <circle cx={X(g0.re[m1])} cy={Y(g0.im[m1])} r={4} fill="#000" />
+      <circle cx={X(g0.re[m1])} cy={Y(g0.im[m1])} r={4} className="mkfill" />
       <text x={X(g0.re[m1]) + 6} y={Y(g0.im[m1]) - 6} className="mk">m1</text>
-      {hover !== null && <circle cx={X(g0.re[hover])} cy={Y(g0.im[hover])} r={5} fill="none" stroke="#000" />}
+      {hover !== null && <circle cx={X(g0.re[hover])} cy={Y(g0.im[hover])} r={5} className="frame" />}
       <text x={S + 10} y={24} className="ptitle">Smith Chart — {gammas.map((g) => g.name).join(", ")}</text>
       {info(m1, "m1 (min |Γ|)", 40)}
       {hover !== null && info(hover, "cursor", 124)}

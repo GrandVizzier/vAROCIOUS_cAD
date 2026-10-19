@@ -9,8 +9,8 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1); // Z-up
 
 const SELECT = "#e040fb"; // HFSS-style magenta selection
 
-function ObjectMesh({ obj, selected, wireframe, onSelect }: {
-  obj: Obj; selected: boolean; wireframe: boolean; onSelect: (n: string) => void;
+function ObjectMesh({ obj, selected, wireframe, onSelect, dark }: {
+  obj: Obj; selected: boolean; wireframe: boolean; onSelect: (n: string) => void; dark: boolean;
 }) {
   const geom = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -44,20 +44,20 @@ function ObjectMesh({ obj, selected, wireframe, onSelect }: {
           roughness={0.6}
         />
         {/* CAD feature edges (not mesh edges), like the HFSS modeler */}
-        <Edges threshold={20} color={selected ? "#8e00a8" : air ? "#55606e" : "#000000"} />
+        <Edges threshold={20} color={selected ? "#8e00a8" : air ? (dark ? "#8090a0" : "#55606e") : dark ? "#d0d6de" : "#000000"} />
       </mesh>
       {wireframe && (
         <mesh geometry={geom} raycast={() => null}>
-          <meshBasicMaterial wireframe color="#1f2a38" transparent opacity={air ? 0.12 : 0.3} />
+          <meshBasicMaterial wireframe color={dark ? "#c0c8d0" : "#1f2a38"} transparent opacity={air ? 0.12 : 0.3} />
         </mesh>
       )}
     </group>
   );
 }
 
-export default function Viewport({ fitKey, objects, hidden, selected, wireframe, grid, onSelect, children }: {
+export default function Viewport({ fitKey, objects, hidden, selected, wireframe, grid, onSelect, children, dark = false }: {
   fitKey: string; objects: Obj[]; hidden: Set<string>; selected: string | null;
-  wireframe: boolean; grid: boolean; onSelect: (n: string | null) => void; children?: ReactNode;
+  wireframe: boolean; grid: boolean; onSelect: (n: string | null) => void; children?: ReactNode; dark?: boolean;
 }) {
   const visible = objects.filter((o) => !hidden.has(o.name) && o.indices.length);
   return (
@@ -73,7 +73,7 @@ export default function Viewport({ fitKey, objects, hidden, selected, wireframe,
         <group scale={1000}>
           {visible.map((o) => (
             <ObjectMesh key={o.name} obj={o} selected={o.name === selected}
-                        wireframe={wireframe} onSelect={onSelect} />
+                        wireframe={wireframe} onSelect={onSelect} dark={dark} />
           ))}
         </group>
       </Bounds>

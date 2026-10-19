@@ -7,6 +7,26 @@ from fastapi.testclient import TestClient
 from backend import server
 
 
+def test_import_project(tmp_path, monkeypatch):
+    projects = tmp_path / "projects"
+    projects.mkdir()
+    monkeypatch.setattr(server, "PROJECTS", projects)
+    monkeypatch.setattr(server, "OUT", tmp_path / "out")
+    server.state.clear()
+    server.locks.clear()
+    src = (server.ROOT / "projects/examples/box_in_air.json").read_text()
+    with TestClient(server.app) as c:
+        assert c.post("/projects/import", json={"content": src}).json() == {"id": "box_in_air"}
+        assert (projects / "box_in_air.json").exists()
+        assert c.post("/projects/import", json={"content": src}).status_code == 409
+        assert c.post("/projects/import", json={"content": src, "overwrite": True}).status_code == 200
+        bad = c.post("/projects/import", json={"content": "{nope"})
+        assert bad.status_code == 422 and "not valid JSON" in bad.json()["detail"]
+        assert c.post("/projects/import", json={"content": '{"name": "x"}'}).status_code == 422
+        weird = json.loads(src) | {"name": "../evil name"}
+        assert c.post("/projects/import", json={"content": json.dumps(weird)}).json() == {"id": "___evil_name"}
+
+
 def test_server_build_writeback_download(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()

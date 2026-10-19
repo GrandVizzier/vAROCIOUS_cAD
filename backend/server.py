@@ -20,7 +20,7 @@ from pydantic import ValidationError
 from watchfiles import Change, awatch
 
 from .openems_sim import preflight
-from .schema import Simulation, format_validation_error
+from .schema import Project, Simulation, format_validation_error
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECTS = ROOT / "projects"
@@ -150,6 +150,25 @@ def download(file: str):
     if not path.is_absolute():
         path = ROOT / path
     return FileResponse(path, filename=path.name)
+
+
+@app.post("/projects/import")
+def import_project(content: str = Body(...), overwrite: bool = Body(False)):
+    """File > Open: validate an uploaded project JSON and save it as projects/<name>.json."""
+    try:
+        data = json.loads(content)
+        project = Project.model_validate(data)
+    except json.JSONDecodeError as e:
+        raise HTTPException(422, f"not valid JSON: line {e.lineno} col {e.colno}: {e.msg}") from None
+    except ValidationError as e:
+        raise HTTPException(422, format_validation_error(e)) from None
+    name = re.sub(r"[^A-Za-z0-9_-]", "_", project.name)
+    path = PROJECTS / f"{name}.json"
+    if path.exists() and not overwrite:
+        raise HTTPException(409, f"a project named '{name}' already exists")
+    data["name"] = name  # file stem and name stay equal
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return {"id": name}
 
 
 @app.put("/projects/{pid:path}/simulation")

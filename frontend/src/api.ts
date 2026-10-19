@@ -104,7 +104,11 @@ export const setVariables = (id: string, vars: Record<string, string>) =>
 const put = (url: string, body: unknown) =>
   fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
     .then((r) => json<{ ok: boolean }>(r));
-export const setSimulation = (id: string, s: SimSetup) => put(`/projects/${id}/simulation`, s);
+export const importProject = (content: string, overwrite = false) =>
+  fetch("/projects/import", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, overwrite }),
+  }).then((r) => json<{ id: string }>(r));
+export const setSimulation =(id: string, s: SimSetup) => put(`/projects/${id}/simulation`, s);
 export const getSim = (id: string) => fetch(`/sim/${id}`).then((r) => json<SimStatus>(r));
 export const startSim = (id: string) => fetch(`/simulate/${id}`, { method: "POST" }).then((r) => json<{ ok: boolean }>(r));
 export const cancelSim = (id: string) =>

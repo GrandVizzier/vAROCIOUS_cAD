@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Build, FieldPlane, ProjectInfo, SimStatus, WsMsg, cancelSim, getBuild, getField, getSim, ghz, listProjects,
+  Build, FieldPlane, ProjectInfo, SimStatus, WsMsg, cancelSim, getBuild, getField, getSim, ghz, importProject,
+  listProjects,
 } from "./api";
+
+type Theme = "light" | "dark";
+function initialTheme(): Theme {
+  const q = new URLSearchParams(location.search).get("theme");
+  if (q === "dark" || q === "light") return q;
+  try { return localStorage.getItem("theme") === "dark" ? "dark" : "light"; } catch { return "light"; }
+}
 import AnalysisTab from "./AnalysisTab";
 import FieldOverlay, { FieldScale, magnitudes, rainbow } from "./FieldOverlay";
 import ProjectTree, { REPORTS, Report, Tab } from "./ProjectTree";
@@ -33,12 +41,20 @@ export default function App() {
   }, [tab, report, ov.on]);
   const currentRef = useRef(current);
   currentRef.current = current;
+  const [theme, setTheme] = useState<Theme>(initialTheme);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("theme", theme); } catch { /* private mode etc. */ }
+  }, [theme]);
+  const [menu, setMenu] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const refreshProjects = useCallback(async () => {
     try {
       const list = await listProjects();
       setProjects(list);
-      setCurrent((c) => c ?? list[0]?.id ?? null);
+      const wanted = new URLSearchParams(location.search).get("project"); // deep link ?project=<id>
+      setCurrent((c) => c ?? (list.some((p) => p.id === wanted) ? wanted : list[0]?.id ?? null));
       setError(null);
     } catch (e) {
       setError(`backend unreachable: ${e}`);
@@ -127,6 +143,28 @@ export default function App() {
   // deep link #modeler/field opens the E-field overlay once results are loaded
   useEffect(() => { if (hashReport === "field" && res?.fields_at.length && !ov.on) enableOverlay(); }, [res]); // eslint-disable-line
 
+  // ---- File menu ----
+  const openFile = async (file: File) => {
+    const text = await file.text();
+    try {
+      const { id } = await importProject(text);
+      setCurrent(id);
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes("409") && confirm(`${msg.replace(/^Error: 409 /, "")}\n\nOverwrite it?`)) {
+        importProject(text, true).then(({ id }) => setCurrent(id)).catch((e2) => setError(String(e2)));
+      } else if (!msg.includes("409")) setError(`Open project failed: ${msg}`);
+    }
+  };
+  const exportProject = () => {
+    if (!build) return;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([build.source], { type: "application/json" }));
+    a.download = `${current?.split("/").pop() ?? "project"}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   const toggle = (n: string) => setHidden((h) => { const s = new Set(h); s.has(n) ? s.delete(n) : s.add(n); return s; });
   const open = (t: Tab, rep?: Report) => { setTab(t); if (rep) setReport(rep); };
 
@@ -143,7 +181,25 @@ export default function App() {
     <div className={`app ${tab === "modeler" ? "" : "wide"}`}>
       <header className="titlebar">
         <span className="brand">EM Geometry Studio</span>
+        <div className="menu" onMouseLeave={() => setMenu(false)}>
+          <button className={menu ? "open" : ""} onClick={() => setMenu(!menu)}>File</button>
+          {menu && (
+            <div className="menu-drop" onClick={() => setMenu(false)}>
+              <button onClick={() => fileInput.current?.click()}>Open Project…</button>
+              <button disabled={!build} onClick={exportProject}>Export Project (.json)…</button>
+              <hr />
+              <a className={r?.files.msh ? "" : "disabled"} href={`/download/${current}.msh`}>Export Mesh (.msh)</a>
+              <a className={r?.files.step ? "" : "disabled"} href={`/download/${current}.step`}>Export CAD (.step)</a>
+            </div>
+          )}
+          <input ref={fileInput} type="file" accept=".json,application/json" hidden
+                 onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) openFile(f); }} />
+        </div>
         <span className="dim">{r?.name ?? current ?? ""}</span>
+        <button className="theme-toggle" title="Toggle dark theme"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+          {theme === "dark" ? "☀ Light" : "☾ Dark"}
+        </button>
         <nav className="tabs">
           {([["modeler", "3D Modeler"], ["analysis", "Analysis"], ["results", "Results"]] as [Tab, string][]).map(([k, label]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{label}</button>
@@ -173,7 +229,7 @@ export default function App() {
             <div className="viewport">
               {r ? (
                 <Viewport fitKey={current ?? ""} objects={r.objects} hidden={hidden} selected={selected}
-                          wireframe={wireframe} grid={grid} onSelect={setSelected}>
+                          wireframe={wireframe} grid={grid} onSelect={setSelected} dark={theme === "dark"}>
                   {ov.on && fp && <FieldOverlay fp={fp} phase={ov.phase} scale={ov.scale} vectors={ov.vectors} />}
                 </Viewport>
               ) : <div className="empty">{build?.status === "error" ? "No successful build yet" : "Building…"}</div>}
@@ -253,10 +309,8 @@ export default function App() {
           </>
         ) : <div className="dim">{sim?.status && sim.status !== "idle" ? `Last analysis: ${sim.status}` : "Idle"}</div>}
         {r && (
-          <div className="status">
-            <span>{r.stats.volumes} volumes · {r.stats.nodes?.toLocaleString() ?? "–"} nodes</span>
-            <a className="btn" href={`/download/${current}.msh`}>.msh</a>
-            <a className="btn" href={`/download/${current}.step`}>.step</a>
+          <div className="status dim">
+            {r.stats.volumes} volumes · {r.stats.nodes?.toLocaleString() ?? "–"} nodes · {r.stats.tetrahedra?.toLocaleString() ?? "–"} tets
           </div>
         )}
       </section>

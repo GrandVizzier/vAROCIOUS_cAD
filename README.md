@@ -77,6 +77,7 @@ This starts the backend (FastAPI on :8000) and the frontend (Vite on :5173). Ope
 
 | Where | What |
 |---|---|
+| Title bar | **File** menu (Open Project… imports a `.json` into `projects/`; Export Project, Mesh `.msh`, CAD `.step`), **☾ Dark / ☀ Light** theme toggle (remembered per browser) |
 | Tabs (top right) | **3D Modeler**, **Analysis**, **Results** |
 | Project Manager (left) | Project picker, then the design tree: Model (solids, sheets; visibility toggles), Boundaries, Excitations (✓ valid / ⚠ problem), Analysis (setup and sweep), Results (reports), Field Overlays |
 | 3D Modeler | Left-drag to orbit, right-drag to pan, scroll to zoom, click an object to select it. Toggles for grid, mesh wireframe and E field |

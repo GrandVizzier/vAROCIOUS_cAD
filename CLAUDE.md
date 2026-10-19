@@ -64,10 +64,25 @@ Use the venv's Python: `.venv\Scripts\python` on Windows, `.venv/bin/python` on 
 - **Lumped port** = a flat, axis-aligned sheet (`material: "port"`) that bridges two conductors, plus
   `{"target": "<sheet>", "type": "lumped", "impedance": "50", "direction": "+z"}`.
   `direction` lies IN the sheet and points from one conductor to the other. Width ≈ trace/arm width.
-  - Microstrip edge feed: XZ (or YZ) sheet at the trace end, from ground (z=0) to the trace (z=h), `+z`.
-  - Dipole / gap feed: sheet spanning the gap between the two arms, direction along the dipole axis.
   - The build checks both ends of the port touch metal and that the direction lies in the sheet; any
     `PROBLEM` in the build summary's **Ports** section must be fixed before simulating.
+- **Pick the port from the design's actual feed** (never leave a radiator/circuit without a port
+  unless the user asked for geometry only). Model the feed the paper/user describes, then place:
+
+  | Feed | Port sheet (material `"port"`) | `direction` |
+  |---|---|---|
+  | Microstrip line (edge / inset / line-fed patch, filters) | at the open end of the 50 Ω line on the substrate edge: XZ/YZ sheet, width = line width `wf`, from ground (z=0) to the trace (z=h) | `+z` |
+  | Coax / probe feed (patch, ME-dipole, PIFA) | replace the probe by the port: sheet in the probe's position from ground to the patch/feed strip, width = probe diameter | `+z` (ground → probe top) |
+  | Dipole, loop, bow-tie, spiral (balanced, gap fed) | the sheet filling the feed gap between the two arms, width = arm width | along the gap, arm → arm |
+  | Monopole over ground | sheet from the ground plane up to the monopole base (leave a small gap below the wire) | away from ground |
+  | CPW / slot / Vivaldi (coplanar) | sheet in the metal plane across the slot at the feed point, from signal to ground | across the slot |
+  | Two-port devices (filters, couplers, lines) | one port per terminal, `index` order = port number; same rules per end | ground → signal |
+
+  - Impedance: the system reference (50 Ω unless the paper states otherwise). Make sure the feed line
+    is actually designed for it (e.g. Hammerstad `wf` for 50 Ω).
+  - Waveguide/horn feeds need waveguide ports (not supported by openEMS here): say so and propose a
+    lumped-fed alternative. Unit cells with Floquet ports can be built but not simulated (see below).
+  - Keep the port ≥ λ/4 from the air-box faces (PML eats the outer 8 cells).
 - `simulation`: `sweep` start/stop are Hz expressions (`"0.8*f0"`), `points`, `fields_at` (Hz list),
   `mesh.cells_per_wavelength` (20 default; 15 for quick checks), `absorber` `PML_8`|`MUR`,
   `end_criteria_db` (-40). Keep ≥ λ/4 air (λ at the lowest frequency) between metal and the air box.
@@ -99,8 +114,13 @@ When the user describes a model:
    - 50 Ω microstrip width: Hammerstad/Wheeler synthesis (`A`/`B` formulas).
    - Dipole: total length ≈ 0.48 λ, with a small feed gap.
    - Air box padding ≥ λ/4 at the lowest frequency from any metal.
-3. Run `PY scripts/build.py projects/<name>.json --render`, read the summary
-   (objects, groups, warnings), and look at `out/<name>_top.png`, `_front.png` and `_iso.png`. Fix errors,
-   warnings and mismatches until it builds cleanly and matches the request.
-4. Tell the user the key dimensions (mm) and every assumption. The running app picks the file up
-   automatically.
+3. **Assign the correct port(s) for this design's feed** (table in "Ports & simulation") and add a
+   `simulation` block (sweep around the target band, `fields_at` the centre frequency).
+4. Run `PY scripts/build.py projects/<name>.json --render`, read the summary
+   (objects, groups, **Ports: every port must be OK**, warnings), and look at `out/<name>_top.png`,
+   `_front.png` and `_iso.png`. Fix errors, warnings and mismatches until it builds cleanly and matches
+   the request.
+5. If openEMS can simulate it, run `PY scripts/simulate.py projects/<name>.json` and check the
+   resonance/match (see "Ports & simulation"); retune if needed.
+6. Tell the user the key dimensions (mm), the port you chose and why, the simulated numbers, and every
+   assumption. The running app picks the file up automatically.
