@@ -287,12 +287,17 @@ def _check_ports(project, values, names, meta):
 
 
 def _features():
-    """Grid-line candidates for structured-grid solvers: every curve and face bbox extent."""
+    """Grid-line candidates for structured-grid solvers: exact vertex coordinates, plus the
+    extents of curved edges (OCC bboxes are padded ~0.1 µm, so never use them for straight edges)."""
     coords = [set(), set(), set()]
-    for d, t in gmsh.model.getEntities(1) + gmsh.model.getEntities(2):
-        b = occ.getBoundingBox(d, t)
-        for k in range(3):
-            coords[k].update((round(b[k], 9), round(b[k + 3], 9)))
+    for _, t in gmsh.model.getEntities(0):
+        for k, c in enumerate(gmsh.model.getValue(0, t, [])):
+            coords[k].add(round(float(c), 12))
+    for _, t in gmsh.model.getEntities(1):
+        if gmsh.model.getType(1, t) != "Line":
+            b = occ.getBoundingBox(1, t)
+            for k in range(3):
+                coords[k].update((round(b[k], 9), round(b[k + 3], 9)))
     return {a: sorted(c) for a, c in zip("xyz", coords)}
 
 
