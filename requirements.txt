@@ -6,3 +6,5 @@ watchfiles
 matplotlib
 pytest
 httpx
+numpy
+h5py
