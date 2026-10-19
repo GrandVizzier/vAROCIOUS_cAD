@@ -59,15 +59,23 @@ def grid_lines(result):
     """Feature lines from the CAD model (every curve/face extent) plus the domain bounds.
     Smoothing to the max cell size is done by CSXCAD (SmoothMeshLines)."""
     lo, hi = _domain(result)
+    cell = max_cell(result)
+    # features closer than this are one line: OCC pads curved-edge extents by ~0.1 µm and near-
+    # coincident features would otherwise force µm cells (FDTD timestep scales with the smallest cell)
+    merge = max(1e-6, cell / 25)
     lines = {}
     for k, a in enumerate("xyz"):
         f = np.array([lo[k], hi[k], *result["features"][a]])
         f = np.sort(f[(f >= lo[k] - 1e-9) & (f <= hi[k] + 1e-9)])
-        # ponytail: fixed 1 µm merge tolerance (OCC bbox slack is ~0.1 µm); breaks for µm-scale designs
-        f = f[np.concatenate([[True], np.diff(f) > 1e-6])]
-        # at least MIN_CELLS across every feature gap (substrate thickness, gaps, trace widths);
-        # SmoothMeshLines only fills gaps larger than the max cell
-        fill = [np.linspace(p, q, MIN_CELLS + 1)[1:-1] for p, q in zip(f[:-1], f[1:])]
+        keep = [f[0]]
+        for c in f[1:]:
+            if c - keep[-1] > merge:
+                keep.append(c)
+        f = np.array(keep)
+        # at least MIN_CELLS across every feature gap (substrate thickness, gaps, trace widths),
+        # but never cells finer than cell/10; SmoothMeshLines only fills gaps larger than the max cell
+        fill = [np.linspace(p, q, MIN_CELLS + 1)[1:-1] for p, q in zip(f[:-1], f[1:])
+                if (q - p) / MIN_CELLS >= cell / 10]
         lines[a] = np.sort(np.concatenate([f, *fill]))
     return lines
 

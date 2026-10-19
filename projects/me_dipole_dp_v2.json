@@ -1,0 +1,576 @@
+{
+  "name": "me_dipole_dp_v2",
+  "units": "mm",
+  "description": "Dual-polarized ME-dipole antenna, 2 ports (element of Xiang et al., IEEE TAP 72(10) 2024, Fig. 1): RA delay lines/bottom layers removed, each L-probe fed by a 50-ohm lumped port in a gap above the ground; open radiation box",
+  "variables": {
+    "f0": "29e9",
+    "lam0": "c0/f0*1000",
+    "G": "6",
+    "L1": "1.65",
+    "L2": "1.83",
+    "L3": "2.06",
+    "L5": "0.21",
+    "L6": "0.5",
+    "L8": "2.1",
+    "W1": "0.4",
+    "W2": "0.6",
+    "W3": "0.65",
+    "d1": "0.2",
+    "P1": "0.35",
+    "P4": "0.8",
+    "P5": "0.58",
+    "dp": "0.2",
+    "voff": "0.2",
+    "hsub1": "0.254",
+    "hsub2": "1.016",
+    "hb": "0.101",
+    "z_mid": "hsub2 + hb",
+    "z_top": "z_mid + hsub1",
+    "vx": "W2/2 + voff",
+    "vy": "W3/2 + voff",
+    "y_red": "-P5 - W1/2",
+    "f_lo": "24e9",
+    "f_hi": "34e9",
+    "gp": "0.1",
+    "pad": "c0/f_lo*1000/4 + 0.5",
+    "mesh_size": "lam0/10"
+  },
+  "history": [
+    {
+      "op": "box",
+      "name": "substrate2",
+      "origin": [
+        "-G/2",
+        "-G/2",
+        "0"
+      ],
+      "size": [
+        "G",
+        "G",
+        "hsub2"
+      ],
+      "material": "TLY5"
+    },
+    {
+      "op": "box",
+      "name": "bond1",
+      "origin": [
+        "-G/2",
+        "-G/2",
+        "hsub2"
+      ],
+      "size": [
+        "G",
+        "G",
+        "hb"
+      ],
+      "material": "RO4450F"
+    },
+    {
+      "op": "box",
+      "name": "substrate1",
+      "origin": [
+        "-G/2",
+        "-G/2",
+        "z_mid"
+      ],
+      "size": [
+        "G",
+        "G",
+        "hsub1"
+      ],
+      "material": "TLY5"
+    },
+    {
+      "op": "rectangle",
+      "name": "patch_ne",
+      "origin": [
+        "W2/2",
+        "W3/2",
+        "z_top"
+      ],
+      "size": [
+        "L2",
+        "L1"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "patch_nw",
+      "origin": [
+        "-W2/2-L2",
+        "W3/2",
+        "z_top"
+      ],
+      "size": [
+        "L2",
+        "L1"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "patch_se",
+      "origin": [
+        "W2/2",
+        "-W3/2-L1",
+        "z_top"
+      ],
+      "size": [
+        "L2",
+        "L1"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "patch_sw",
+      "origin": [
+        "-W2/2-L2",
+        "-W3/2-L1",
+        "z_top"
+      ],
+      "size": [
+        "L2",
+        "L1"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_ne1",
+      "origin": [
+        "vx",
+        "vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_ne2",
+      "origin": [
+        "vx+P1",
+        "vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_ne3",
+      "origin": [
+        "vx+2*P1",
+        "vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_ne4",
+      "origin": [
+        "vx",
+        "vy+P1",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_nw1",
+      "origin": [
+        "-vx",
+        "vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_nw2",
+      "origin": [
+        "-vx-P1",
+        "vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_nw3",
+      "origin": [
+        "-vx-2*P1",
+        "vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_nw4",
+      "origin": [
+        "-vx",
+        "vy+P1",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_se1",
+      "origin": [
+        "vx",
+        "-vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_se2",
+      "origin": [
+        "vx+P1",
+        "-vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_se3",
+      "origin": [
+        "vx+2*P1",
+        "-vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_se4",
+      "origin": [
+        "vx",
+        "-vy-P1",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_sw1",
+      "origin": [
+        "-vx",
+        "-vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_sw2",
+      "origin": [
+        "-vx-P1",
+        "-vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_sw3",
+      "origin": [
+        "-vx-2*P1",
+        "-vy",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_sw4",
+      "origin": [
+        "-vx",
+        "-vy-P1",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "d1/2",
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "probe_x",
+      "origin": [
+        "-W1/2",
+        "y_red",
+        "z_top"
+      ],
+      "size": [
+        "W1",
+        "L3"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "probe_x_cap",
+      "origin": [
+        "-L6/2",
+        "y_red+L3-L5",
+        "z_top"
+      ],
+      "size": [
+        "L6",
+        "L5"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "unite",
+      "object": "probe_x",
+      "tools": [
+        "probe_x_cap"
+      ]
+    },
+    {
+      "op": "cylinder",
+      "name": "probe_x_via",
+      "origin": [
+        "0",
+        "-P5",
+        "gp"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_top-gp"
+      ],
+      "radius": "dp/2",
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "probe_y",
+      "origin": [
+        "P4+W1/2-L8",
+        "-W1/2",
+        "z_mid"
+      ],
+      "size": [
+        "L8",
+        "W1"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "cylinder",
+      "name": "probe_y_via",
+      "origin": [
+        "P4",
+        "0",
+        "gp"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z_mid-gp"
+      ],
+      "radius": "dp/2",
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "ground",
+      "origin": [
+        "-G/2",
+        "-G/2",
+        "0"
+      ],
+      "size": [
+        "G",
+        "G"
+      ],
+      "material": "copper"
+    },
+    {
+      "op": "rectangle",
+      "name": "port_x",
+      "origin": [
+        "-dp/2",
+        "-P5",
+        "0"
+      ],
+      "size": [
+        "dp",
+        "gp"
+      ],
+      "plane": "XZ",
+      "material": "port"
+    },
+    {
+      "op": "rectangle",
+      "name": "port_y",
+      "origin": [
+        "P4-dp/2",
+        "0",
+        "0"
+      ],
+      "size": [
+        "dp",
+        "gp"
+      ],
+      "plane": "XZ",
+      "material": "port"
+    },
+    {
+      "op": "box",
+      "name": "airbox",
+      "origin": [
+        "-G/2-pad",
+        "-G/2-pad",
+        "-pad"
+      ],
+      "size": [
+        "G+2*pad",
+        "G+2*pad",
+        "z_top+2*pad"
+      ],
+      "material": "air"
+    }
+  ],
+  "boundaries": [
+    {
+      "type": "radiation",
+      "target": "airbox",
+      "faces": "outer"
+    }
+  ],
+  "ports": [
+    {
+      "target": "port_x",
+      "type": "lumped",
+      "impedance": "50",
+      "direction": "+z"
+    },
+    {
+      "target": "port_y",
+      "type": "lumped",
+      "impedance": "50",
+      "direction": "+z"
+    }
+  ],
+  "simulation": {
+    "solver": "openems",
+    "sweep": {
+      "start": "22e9",
+      "stop": "36e9",
+      "points": 281
+    },
+    "fields_at": [
+      "f0"
+    ],
+    "mesh": {
+      "cells_per_wavelength": 20,
+      "ratio": 1.4
+    },
+    "absorber": "PML_8",
+    "end_criteria_db": -40,
+    "max_timesteps": 300000
+  }
+}
