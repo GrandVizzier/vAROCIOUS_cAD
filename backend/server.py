@@ -25,7 +25,7 @@ from .schema import Project, Simulation, format_validation_error
 ROOT = Path(__file__).resolve().parents[1]
 PROJECTS = ROOT / "projects"
 OUT = ROOT / "out"
-BUILD_TIMEOUT = 120  # seconds
+BUILD_TIMEOUT = 600  # seconds; multilayer periodic cells mesh in ~1 min
 
 state = {}      # id -> {"status": "building"|"ok"|"error", "error": str|None, "result": last good}
 locks = {}      # id -> asyncio.Lock (one build per project at a time)
@@ -122,9 +122,10 @@ async def get_build(pid: str):
     path = project_path(pid)
     if pid not in state:
         await rebuild(pid)
-    elif state[pid]["result"] is None and state[pid]["status"] == "building":
-        async with locks.setdefault(pid, asyncio.Lock()):
-            pass  # wait for the in-flight build
+    else:  # first build still in flight (it may not even hold its lock yet): wait for it
+        deadline = time.time() + BUILD_TIMEOUT
+        while state[pid]["result"] is None and state[pid]["status"] == "building" and time.time() < deadline:
+            await asyncio.sleep(0.1)
     return {**state[pid], "id": pid, "source": path.read_text(encoding="utf-8-sig")}
 
 

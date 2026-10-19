@@ -1,0 +1,903 @@
+{
+  "name": "cp_tcda_cell",
+  "units": "mm",
+  "description": "CP tightly-coupled dipole array unit cell with folded coupling patches and top-loaded patch (Mu et al., AEU 170 (2023) 154810, Fig. 1/Table 1); two orthogonal ideal lumped ports as in the paper's Fig. 7(a); periodic walls + Floquet port; Y-feed/90-deg shifter omitted",
+  "variables": {
+    "p": "10.5",
+    "l1": "1.8",
+    "l2": "4.0",
+    "l3": "4.8",
+    "h1": "0.787",
+    "h2": "1.575",
+    "h3": "0.254",
+    "h4": "1.575",
+    "h5": "3.175",
+    "h6": "0.254",
+    "r1": "1.85",
+    "r2": "4.0",
+    "t": "0.1",
+    "f_lo": "3.2e9",
+    "f_hi": "12.5e9",
+    "f0": "9e9",
+    "lam_lo": "c0/f_lo*1000",
+    "lam_hi": "c0/f_hi*1000",
+    "dr": "2.85",
+    "r_in": "1.3",
+    "g": "0.3",
+    "wf": "0.4",
+    "dv": "0.2",
+    "ins": "0.3",
+    "z_dip": "h5 + t + h4",
+    "z1": "z_dip + t + h3",
+    "z2": "z1 + t + h2",
+    "z_top": "z2 + t + h1",
+    "h_air": "lam_lo/4",
+    "mesh_size": "lam_hi/10"
+  },
+  "history": [
+    {
+      "op": "box",
+      "name": "sub5",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "0"
+      ],
+      "size": [
+        "p",
+        "p",
+        "h5"
+      ],
+      "material": "F4B"
+    },
+    {
+      "op": "box",
+      "name": "pp1",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "h5"
+      ],
+      "size": [
+        "p",
+        "p",
+        "t"
+      ],
+      "material": "prepreg"
+    },
+    {
+      "op": "box",
+      "name": "sub4",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "h5+t"
+      ],
+      "size": [
+        "p",
+        "p",
+        "h4"
+      ],
+      "material": "F4B"
+    },
+    {
+      "op": "box",
+      "name": "pp2",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "z_dip"
+      ],
+      "size": [
+        "p",
+        "p",
+        "t"
+      ],
+      "material": "prepreg"
+    },
+    {
+      "op": "box",
+      "name": "sub3",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "z_dip+t"
+      ],
+      "size": [
+        "p",
+        "p",
+        "h3"
+      ],
+      "material": "F4B"
+    },
+    {
+      "op": "box",
+      "name": "pp3",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "z1"
+      ],
+      "size": [
+        "p",
+        "p",
+        "t"
+      ],
+      "material": "prepreg"
+    },
+    {
+      "op": "box",
+      "name": "sub2",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "z1+t"
+      ],
+      "size": [
+        "p",
+        "p",
+        "h2"
+      ],
+      "material": "F4B"
+    },
+    {
+      "op": "box",
+      "name": "pp4",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "z2"
+      ],
+      "size": [
+        "p",
+        "p",
+        "t"
+      ],
+      "material": "prepreg"
+    },
+    {
+      "op": "box",
+      "name": "sub1",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "z2+t"
+      ],
+      "size": [
+        "p",
+        "p",
+        "h1"
+      ],
+      "material": "F4B"
+    },
+    {
+      "op": "rectangle",
+      "name": "ground",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "0"
+      ],
+      "size": [
+        "p",
+        "p"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "disk",
+      "name": "ring_e",
+      "center": [
+        "dr",
+        "0",
+        "z_dip"
+      ],
+      "radius": "r1",
+      "material": "PEC"
+    },
+    {
+      "op": "disk",
+      "name": "hole_e",
+      "center": [
+        "dr",
+        "0",
+        "z_dip"
+      ],
+      "radius": "r_in"
+    },
+    {
+      "op": "subtract",
+      "object": "ring_e",
+      "tools": [
+        "hole_e"
+      ]
+    },
+    {
+      "op": "disk",
+      "name": "ring_w",
+      "center": [
+        "-dr",
+        "0",
+        "z_dip"
+      ],
+      "radius": "r1",
+      "material": "PEC"
+    },
+    {
+      "op": "disk",
+      "name": "hole_w",
+      "center": [
+        "-dr",
+        "0",
+        "z_dip"
+      ],
+      "radius": "r_in"
+    },
+    {
+      "op": "subtract",
+      "object": "ring_w",
+      "tools": [
+        "hole_w"
+      ]
+    },
+    {
+      "op": "disk",
+      "name": "ring_n",
+      "center": [
+        "0",
+        "dr",
+        "z_dip"
+      ],
+      "radius": "r1",
+      "material": "PEC"
+    },
+    {
+      "op": "disk",
+      "name": "hole_n",
+      "center": [
+        "0",
+        "dr",
+        "z_dip"
+      ],
+      "radius": "r_in"
+    },
+    {
+      "op": "subtract",
+      "object": "ring_n",
+      "tools": [
+        "hole_n"
+      ]
+    },
+    {
+      "op": "disk",
+      "name": "ring_s",
+      "center": [
+        "0",
+        "-dr",
+        "z_dip"
+      ],
+      "radius": "r1",
+      "material": "PEC"
+    },
+    {
+      "op": "disk",
+      "name": "hole_s",
+      "center": [
+        "0",
+        "-dr",
+        "z_dip"
+      ],
+      "radius": "r_in"
+    },
+    {
+      "op": "subtract",
+      "object": "ring_s",
+      "tools": [
+        "hole_s"
+      ]
+    },
+    {
+      "op": "rectangle",
+      "name": "strip_e",
+      "origin": [
+        "g/2",
+        "-wf/2",
+        "z_dip"
+      ],
+      "size": [
+        "dr-r1+0.2-g/2",
+        "wf"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "rectangle",
+      "name": "strip_w",
+      "origin": [
+        "-(dr-r1+0.2)",
+        "-wf/2",
+        "z_dip"
+      ],
+      "size": [
+        "dr-r1+0.2-g/2",
+        "wf"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "unite",
+      "object": "ring_e",
+      "tools": [
+        "strip_e"
+      ],
+      "name": "arm_xp"
+    },
+    {
+      "op": "unite",
+      "object": "ring_w",
+      "tools": [
+        "strip_w"
+      ],
+      "name": "arm_xm"
+    },
+    {
+      "op": "rectangle",
+      "name": "port_x",
+      "origin": [
+        "-g/2",
+        "-wf/2",
+        "z_dip"
+      ],
+      "size": [
+        "g",
+        "wf"
+      ],
+      "plane": "XY",
+      "material": "port"
+    },
+    {
+      "op": "rectangle",
+      "name": "strip_n",
+      "origin": [
+        "-wf/2",
+        "g/2",
+        "z_dip+t"
+      ],
+      "size": [
+        "wf",
+        "dr-r1+0.2-g/2"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "rectangle",
+      "name": "strip_s",
+      "origin": [
+        "-wf/2",
+        "-(dr-r1+0.2)",
+        "z_dip+t"
+      ],
+      "size": [
+        "wf",
+        "dr-r1+0.2-g/2"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_n",
+      "origin": [
+        "0",
+        "dr-r1+0.12",
+        "z_dip"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "t"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "via_s",
+      "origin": [
+        "0",
+        "-(dr-r1+0.12)",
+        "z_dip"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "t"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "rectangle",
+      "name": "port_y",
+      "origin": [
+        "-wf/2",
+        "-g/2",
+        "z_dip+t"
+      ],
+      "size": [
+        "wf",
+        "g"
+      ],
+      "plane": "XY",
+      "material": "port"
+    },
+    {
+      "op": "rectangle",
+      "name": "cp1_e",
+      "origin": [
+        "p/2-l1",
+        "-l2/2",
+        "z1"
+      ],
+      "size": [
+        "l1",
+        "l2"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "rectangle",
+      "name": "cp2_e",
+      "origin": [
+        "p/2-l1",
+        "-l3/2",
+        "z2"
+      ],
+      "size": [
+        "l1",
+        "l3"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "post_ea",
+      "origin": [
+        "p/2-ins",
+        "l2/2-ins",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "fold_ea",
+      "origin": [
+        "p/2-l1-ins",
+        "l2/2-ins",
+        "z1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z2-z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "post_eb",
+      "origin": [
+        "p/2-ins",
+        "-(l2/2-ins)",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "fold_eb",
+      "origin": [
+        "p/2-l1-ins",
+        "-(l2/2-ins)",
+        "z1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z2-z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "rectangle",
+      "name": "cp1_w",
+      "origin": [
+        "-p/2",
+        "-l2/2",
+        "z1"
+      ],
+      "size": [
+        "l1",
+        "l2"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "rectangle",
+      "name": "cp2_w",
+      "origin": [
+        "-p/2",
+        "-l3/2",
+        "z2"
+      ],
+      "size": [
+        "l1",
+        "l3"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "post_wa",
+      "origin": [
+        "-p/2+ins",
+        "l2/2-ins",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "fold_wa",
+      "origin": [
+        "-p/2+l1-ins",
+        "l2/2-ins",
+        "z1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z2-z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "post_wb",
+      "origin": [
+        "-p/2+ins",
+        "-(l2/2-ins)",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "fold_wb",
+      "origin": [
+        "-p/2+l1-ins",
+        "-(l2/2-ins)",
+        "z1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z2-z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "rectangle",
+      "name": "cp1_n",
+      "origin": [
+        "-l2/2",
+        "p/2-l1",
+        "z1"
+      ],
+      "size": [
+        "l2",
+        "l1"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "rectangle",
+      "name": "cp2_n",
+      "origin": [
+        "-l3/2",
+        "p/2-l1",
+        "z2"
+      ],
+      "size": [
+        "l3",
+        "l1"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "post_na",
+      "origin": [
+        "l2/2-ins",
+        "p/2-ins",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "fold_na",
+      "origin": [
+        "l2/2-ins",
+        "p/2-l1-ins",
+        "z1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z2-z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "post_nb",
+      "origin": [
+        "-(l2/2-ins)",
+        "p/2-ins",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "fold_nb",
+      "origin": [
+        "-(l2/2-ins)",
+        "p/2-l1-ins",
+        "z1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z2-z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "rectangle",
+      "name": "cp1_s",
+      "origin": [
+        "-l2/2",
+        "-p/2",
+        "z1"
+      ],
+      "size": [
+        "l2",
+        "l1"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "rectangle",
+      "name": "cp2_s",
+      "origin": [
+        "-l3/2",
+        "-p/2",
+        "z2"
+      ],
+      "size": [
+        "l3",
+        "l1"
+      ],
+      "plane": "XY",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "post_sa",
+      "origin": [
+        "l2/2-ins",
+        "-p/2+ins",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "fold_sa",
+      "origin": [
+        "l2/2-ins",
+        "-p/2+l1-ins",
+        "z1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z2-z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "post_sb",
+      "origin": [
+        "-(l2/2-ins)",
+        "-p/2+ins",
+        "0"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "cylinder",
+      "name": "fold_sb",
+      "origin": [
+        "-(l2/2-ins)",
+        "-p/2+l1-ins",
+        "z1"
+      ],
+      "axis": [
+        "0",
+        "0",
+        "z2-z1"
+      ],
+      "radius": "dv/2",
+      "material": "PEC"
+    },
+    {
+      "op": "disk",
+      "name": "top_patch",
+      "center": [
+        "0",
+        "0",
+        "z_top"
+      ],
+      "radius": "r2",
+      "material": "PEC"
+    },
+    {
+      "op": "box",
+      "name": "airbox",
+      "origin": [
+        "-p/2",
+        "-p/2",
+        "0"
+      ],
+      "size": [
+        "p",
+        "p",
+        "z_top+h_air"
+      ],
+      "material": "air"
+    }
+  ],
+  "boundaries": [
+    {
+      "type": "master1",
+      "target": "*",
+      "faces": "-x"
+    },
+    {
+      "type": "slave1",
+      "target": "*",
+      "faces": "+x"
+    },
+    {
+      "type": "master2",
+      "target": "*",
+      "faces": "-y"
+    },
+    {
+      "type": "slave2",
+      "target": "*",
+      "faces": "+y"
+    },
+    {
+      "type": "floquet",
+      "target": "airbox",
+      "faces": "+z"
+    }
+  ],
+  "ports": [
+    {
+      "target": "port_x",
+      "type": "lumped",
+      "impedance": "100",
+      "direction": "+x"
+    },
+    {
+      "target": "port_y",
+      "type": "lumped",
+      "impedance": "100",
+      "direction": "+y"
+    }
+  ],
+  "materials": {
+    "F4B": {
+      "epsr": "2.2",
+      "tand": "0.001"
+    },
+    "prepreg": {
+      "epsr": "3.52",
+      "tand": "0.004"
+    }
+  },
+  "simulation": {
+    "solver": "openems",
+    "sweep": {
+      "start": "3e9",
+      "stop": "13e9",
+      "points": 201
+    },
+    "fields_at": [
+      "f0"
+    ]
+  }
+}
