@@ -6,7 +6,7 @@ electromagnetic FEM solvers, and shows it live in the browser.
 - Geometry is built with **Gmsh's OpenCascade kernel**, then **fragmented** so every region shares
   conformal faces.
 - Regions and faces are labeled with **physical groups**: `mat:<material>`,
-  `bc:radiation`, `bc:PEC`, `bc:floquet`, `bc:master1`/`bc:slave1`/â€¦, and `port:<n>`.
+  `bc:radiation`, `bc:PEC`, `bc:floquet`, `bc:master1`/`bc:slave1`/…, and `port:<n>`.
 - It exports a volume mesh (`.msh`) and CAD (`.step`).
 - The viewer  updates live whenever a project file changes.
 - **[Claude Code](https://claude.com/claude-code) writes the geometry for you.** Describe an antenna
@@ -91,7 +91,7 @@ another terminal and ask for a model:
 - *"Build the unit cell from the paper `my_paper.pdf` in this folder"*
 
 Claude will then:
-1. write `projects/<name>.json`, storing the inputs (`f0`, `er`, `h`, â€¦) and the derived dimensions
+1. write `projects/<name>.json`, storing the inputs (`f0`, `er`, `h`, …) and the derived dimensions
    as variables so you can tweak them;
 2. run `scripts/build.py projects/<name>.json --render`, read the summary, look at the rendered
    top/front/iso PNGs, and fix any errors or mismatches;
@@ -112,7 +112,7 @@ with a precise error message if anything fails.
 The warnings it checks for:
 - an object fully consumed by a boolean;
 - an object sticking out of the air box;
-- a radiation boundary closer than Î»/4 to any metal at `f0`.
+- a radiation boundary closer than λ/4 to any metal at `f0`.
 
 ## 6. Project files
 
