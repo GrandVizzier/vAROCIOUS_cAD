@@ -4,6 +4,7 @@ Objects are tracked by NAME: `names[name] -> [(dim, tag), ...]`. Gmsh tags are
 never stored in the project and change on every rebuild.
 """
 import contextlib
+import hashlib
 import json
 import math
 import os
@@ -441,6 +442,7 @@ def build(path, out_dir="out", mesh=True):
         "name": project.name,
         "description": project.description,
         "units": project.units,
+        "source_hash": hashlib.sha1(Path(path).read_bytes()).hexdigest(),  # results staleness
         "variables": {k: str(v) for k, v in project.variables.items()},
         "values": values,
         "objects": objects,

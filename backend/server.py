@@ -171,7 +171,7 @@ def set_simulation(pid: str, simulation: dict = Body(...)):
 # ---- simulation runs -------------------------------------------------------------------------
 # ponytail: one global run at a time; a queue if several users ever share this server
 sim = {"pid": None, "proc": None, "status": "idle", "progress": 0.0, "stage": "", "log": deque(maxlen=300)}
-ENERGY = re.compile(r"Energy: ~\S+ \(\s*(-?[\d.]+)dB\)")
+ENERGY = re.compile(r"Energy: ~\S+ \(\s*(-?)\s*([\d.]+)dB\)")  # also "(- 0.00dB)"
 LOOP = None
 
 
@@ -198,7 +198,8 @@ def _watch_sim(pid, proc, end_db):
             continue
         m = ENERGY.search(line)
         if m:  # energy falls from 0 dB to the end criterion
-            sim["progress"] = max(sim["progress"], min(99.0, 100 * float(m.group(1)) / end_db))
+            db = -float(m.group(2)) if m.group(1) else float(m.group(2))
+            sim["progress"] = max(sim["progress"], min(99.0, 100 * db / end_db))
         else:
             sim["log"].append(line)
             if line.startswith("[sim]"):
@@ -264,7 +265,7 @@ def field_plane(pid: str, f: float, plane: str = "z", pos: float = 0.0, max_n: i
     sv = max(1, -(-len(axes[v]) // max_n))
     return {"freq": freq, "plane": plane, "pos": float(axes[plane][i]), "u_axis": u, "v_axis": v,
             "u": axes[u][::su].tolist(), "v": axes[v][::sv].tolist(),
-            "re": re[:, ::su, ::sv].round(6).tolist(), "im": im[:, ::su, ::sv].round(6).tolist(),
+            "re": re[:, ::su, ::sv].tolist(), "im": im[:, ::su, ::sv].tolist(),
             "range": {a: [float(axes[a][0]), float(axes[a][-1])] for a in "xyz"}}
 
 
@@ -283,7 +284,7 @@ def get_sim(pid: str):
         "log": list(sim["log"]) if mine else [],
         "problems": preflight(built) if built else ["project has not built yet"],
         "results": results,
-        "stale": bool(results and built and built["built_at"] > results["finished_at"]),
+        "stale": bool(results and built and results.get("source_hash") != built.get("source_hash")),
     }
 
 

@@ -224,7 +224,7 @@ def run(result, out_dir, log=print):
     if problems:
         raise SimError("; ".join(problems))
     sim = result["simulation"]
-    out = Path(out_dir)
+    out = Path(out_dir).resolve()  # openEMS Run() changes the working directory
     out.mkdir(parents=True, exist_ok=True)
     freqs = np.linspace(sim["sweep"]["start"], sim["sweep"]["stop"], sim["sweep"]["points"])
     S, Z, warnings, t0 = {}, {}, [], time.time()
@@ -247,12 +247,18 @@ def run(result, out_dir, log=print):
         if not _converged(run_dir, k, sim["end_criteria_db"]):
             warnings.append(f"port {k} run stopped before the fields decayed; raise max_timesteps")
         if first and sim["fields_at"]:
-            _save_fields(run_dir / "Ef.h5", sim["fields_at"], out / "fields.npz")
+            # normalise like HFSS: 1 W incident at the excited port, phase referenced to the
+            # incident wave (dump DFT and port DFT share openEMS's convention; checked to 1e-4)
+            ff = np.array(sim["fields_at"])
+            ports[k].CalcPort(str(run_dir), ff, ref_impedance=result["ports"][k - 1]["impedance"])
+            scale = np.sqrt(2 * result["ports"][k - 1]["impedance"] * 1.0) / ports[k].uf_inc
+            _save_fields(run_dir / "Ef.h5", sim["fields_at"], out / "fields.npz", scale)
 
     k = excited[0]
     mag = np.hypot(*np.array(S[f"{k},{k}"]))
     res = {
         "name": result["name"],
+        "source_hash": result.get("source_hash"),
         "freqs": freqs.tolist(),
         "S": S,
         "Z": Z,
@@ -268,11 +274,12 @@ def run(result, out_dir, log=print):
     return res
 
 
-def _save_fields(h5, freqs, path):
+def _save_fields(h5, freqs, path, scale):
+    """E-field snapshots, V/m for 1 W incident (scale: complex factor per frequency)."""
     from openEMS.utilities import HDF5Dump
 
     with HDF5Dump(str(h5)) as h:
         x, y, z = h.GetMesh()["lines"]  # SI meters
-        E = np.stack([h.GetFieldAtFrequency(f) for f in freqs])  # (nf, 3, nx, ny, nz) complex
+        E = np.stack([h.GetFieldAtFrequency(f) * s for f, s in zip(freqs, scale)])  # (nf, 3, nx, ny, nz)
     np.savez_compressed(path, freqs=np.array(freqs), x=x, y=y, z=z,
                         re=E.real.astype(np.float32), im=E.imag.astype(np.float32))

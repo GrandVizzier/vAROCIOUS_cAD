@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { ReactNode } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { Bounds, Edges, GizmoHelper, GizmoViewport, Grid, OrbitControls } from "@react-three/drei";
@@ -54,9 +55,9 @@ function ObjectMesh({ obj, selected, wireframe, onSelect }: {
   );
 }
 
-export default function Viewport({ fitKey, objects, hidden, selected, wireframe, grid, onSelect }: {
+export default function Viewport({ fitKey, objects, hidden, selected, wireframe, grid, onSelect, children }: {
   fitKey: string; objects: Obj[]; hidden: Set<string>; selected: string | null;
-  wireframe: boolean; grid: boolean; onSelect: (n: string | null) => void;
+  wireframe: boolean; grid: boolean; onSelect: (n: string | null) => void; children?: ReactNode;
 }) {
   const visible = objects.filter((o) => !hidden.has(o.name) && o.indices.length);
   return (
@@ -76,6 +77,8 @@ export default function Viewport({ fitKey, objects, hidden, selected, wireframe,
           ))}
         </group>
       </Bounds>
+      {/* overlays (field plots) live outside Bounds so they don't change the camera fit */}
+      <group scale={1000}>{children}</group>
       {grid && (
         <Grid rotation={[Math.PI / 2, 0, 0]} cellSize={10} sectionSize={50} infiniteGrid
               fadeDistance={2000} cellColor="#b8c2cf" sectionColor="#8f9bab" />

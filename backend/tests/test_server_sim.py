@@ -10,15 +10,16 @@ from fastapi.testclient import TestClient
 from backend import server
 
 FAKE = textwrap.dedent("""
-    import json, sys, time, pathlib, numpy as np
+    import hashlib, json, sys, time, pathlib, numpy as np
     out = pathlib.Path(sys.argv[1]) / "sims" / "patch_inset_2p4ghz"
+    src = hashlib.sha1(pathlib.Path(sys.argv[2]).read_bytes()).hexdigest()
     out.mkdir(parents=True, exist_ok=True)
     print("[sim] exciting port 1: 1,000 cells", flush=True)
     for db in (-5, -20, -35):
         print(f"[@ 1s] Timestep: 10 || Speed: 1 MC/s || Energy: ~1e-9 ({db}.00dB)", flush=True)
         time.sleep(0.05)
     f = np.linspace(2e9, 2.8e9, 5)
-    (out / "results.json").write_text(json.dumps({"name": "patch_inset_2p4ghz", "freqs": f.tolist(),
+    (out / "results.json").write_text(json.dumps({"name": "patch_inset_2p4ghz", "freqs": f.tolist(), "source_hash": src,
         "S": {"1,1": [[0.1] * 5, [0.0] * 5]}, "Z": {"1": [[50] * 5, [0] * 5]}, "finished_at": time.time() + 60}))
     x = y = z = np.linspace(0, 1, 4)
     np.savez(out / "fields.npz", freqs=np.array([2.4e9]), x=x, y=y, z=z,
@@ -35,7 +36,7 @@ def test_simulation_endpoints(tmp_path, monkeypatch):
     out = tmp_path / "out"
     monkeypatch.setattr(server, "PROJECTS", projects)
     monkeypatch.setattr(server, "OUT", out)
-    monkeypatch.setattr(server, "sim_command", lambda path: [sys.executable, str(fake), str(out)])
+    monkeypatch.setattr(server, "sim_command", lambda path: [sys.executable, str(fake), str(out), str(path)])
     server.state.clear()
     server.locks.clear()
     server.sim.update(pid=None, status="idle", progress=0.0)
@@ -49,6 +50,12 @@ def test_simulation_endpoints(tmp_path, monkeypatch):
         new = {"sweep": {"start": "2.1e9", "stop": "2.7e9", "points": 201}, "fields_at": ["f0"]}
         assert c.put("/projects/patch/simulation", json=new).status_code == 200
         assert json.loads((projects / "patch.json").read_text())["simulation"] == new
+        deadline = time.time() + 30   # wait for the watcher rebuild of the edited setup
+        while time.time() < deadline:
+            b = c.get("/build/patch").json()
+            if b["status"] == "ok" and b["result"]["simulation"]["sweep"]["points"] == 201:
+                break
+            time.sleep(0.2)
 
         assert c.post("/simulate/patch").status_code == 200
         assert c.post("/simulate/patch").status_code == 409          # one run at a time

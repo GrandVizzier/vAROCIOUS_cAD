@@ -10,6 +10,7 @@ export default defineConfig({
       "/projects": api,
       "/build": api,
       "/download": api,
+      "/sim": api, // also matches /simulate
       "/ws": { target: api, ws: true },
     },
   },
