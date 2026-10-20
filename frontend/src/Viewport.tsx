@@ -7,7 +7,7 @@ import { Obj, materialColor, opacity } from "./api";
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1); // Z-up
 
-const SELECT = "#e040fb"; // HFSS-style magenta selection
+const SELECT = "#cf4520"; // signal vermilion selection (drafting theme)
 
 function ObjectMesh({ obj, selected, wireframe, onSelect, dark }: {
   obj: Obj; selected: boolean; wireframe: boolean; onSelect: (n: string) => void; dark: boolean;
@@ -44,11 +44,11 @@ function ObjectMesh({ obj, selected, wireframe, onSelect, dark }: {
           roughness={0.6}
         />
         {/* CAD feature edges (not mesh edges), like the HFSS modeler */}
-        <Edges threshold={20} color={selected ? "#8e00a8" : air ? (dark ? "#8090a0" : "#55606e") : dark ? "#d0d6de" : "#000000"} />
+        <Edges threshold={20} color={selected ? "#cf4520" : air ? (dark ? "#716c62" : "#9c968a") : dark ? "#d9d3c6" : "#1c1b18"} />
       </mesh>
       {wireframe && (
         <mesh geometry={geom} raycast={() => null}>
-          <meshBasicMaterial wireframe color={dark ? "#c0c8d0" : "#1f2a38"} transparent opacity={air ? 0.12 : 0.3} />
+          <meshBasicMaterial wireframe color={dark ? "#d9d3c6" : "#1c1b18"} transparent opacity={air ? 0.12 : 0.3} />
         </mesh>
       )}
     </group>
@@ -81,11 +81,11 @@ export default function Viewport({ fitKey, objects, hidden, selected, wireframe,
       <group scale={1000}>{children}</group>
       {grid && (
         <Grid rotation={[Math.PI / 2, 0, 0]} cellSize={10} sectionSize={50} infiniteGrid
-              fadeDistance={2000} cellColor="#b8c2cf" sectionColor="#8f9bab" />
+              fadeDistance={2000} cellColor={dark ? "#302e2a" : "#e1dbcd"} sectionColor={dark ? "#3b3934" : "#d6d0c2"} />
       )}
       <OrbitControls makeDefault />
       <GizmoHelper alignment="bottom-left" margin={[70, 70]}>
-        <GizmoViewport axisColors={["#d32f2f", "#2e7d32", "#1565c0"]} labelColor="#fff" />
+        <GizmoViewport axisColors={["#cf4520", "#2f6a4c", "#2c4a72"]} labelColor="#fff" />
       </GizmoHelper>
     </Canvas>
   );

@@ -274,7 +274,7 @@ export default function App() {
         )}
 
         {tab === "results" && (res
-          ? <ResultsTab res={res} report={report} onReport={setReport} />
+          ? <ResultsTab res={res} report={report} onReport={setReport} name={current ?? "results"} />
           : <div className="empty">No results yet — set up and run the analysis ({REPORTS[report]})</div>)}
       </main>
 
