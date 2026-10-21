@@ -3,7 +3,8 @@ S-parameters, Z, and E-field snapshots (probed on a grid, same fields.npz as ope
 
 Palace reads the build's Gmsh mesh directly. Physical group ids are Palace attributes: volume groups
 `mat:<material>` become domains, surface groups `bc:PEC` / `bc:radiation` / `port:<i>` boundaries.
-The mesh is in SI meters (L0 = 1). Interior PEC sheets and port sheets are internal boundaries.
+The mesh is in SI meters (L0 = 1). Interior PEC sheets and port sheets are internal boundaries;
+metal volumes are left out of the Palace mesh (PEC-walled holes).
 """
 import json
 import os
@@ -78,8 +79,9 @@ def config(result, mesh_path, post_dir):
         if dim != 3:
             continue
         mat = result["materials"].get(name.removeprefix("mat:"))
-        if mat is None or mat["metal"]:
-            # metal volumes stay in the mesh as vacuum; their PEC skin (bc:PEC) shields the inside
+        if mat is not None and mat["metal"]:
+            continue  # metal volumes are holes in the .palace.msh (engine.build); their skin is bc:PEC
+        if mat is None:
             materials.append({"Attributes": [i]})
         else:
             materials.append({"Attributes": [i], "Permittivity": mat["epsr"], "LossTan": mat["tand"]})

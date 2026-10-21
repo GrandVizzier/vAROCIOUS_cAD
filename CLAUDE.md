@@ -77,7 +77,11 @@ Solver dropdown). Templates: `projects/patch_inset_2p4ghz.json` (microstrip inse
 2. **Metal**: `PEC` / `copper` sheets (`rectangle`, `disk`, booleans of them) or volumes. Use zero-
    thickness sheets for thin traces, patches and ground planes (cheaper for both). Keep sheets in
    XY / YZ / XZ planes: openEMS cannot place tilted sheets (Palace can, so a tilted sheet makes the
-   project Palace-only; say so). Curved volumes are fine for both (openEMS staircases them).
+   project Palace-only; say so). Curved volumes are fine for both (openEMS staircases them), except:
+   - **Probes, vias and posts: use a square `box` of equal cross-section (side `sqrt(pi)*r`), not a
+     thin `cylinder`.** In thin layers the tetra mesher can put a zero-volume element on a cylinder's
+     seam line, and Palace aborts on it (non-positive Jacobi diagonal); openEMS staircases the
+     cylinder to the same box anyway.
 3. **Dielectrics**: volumes whose material is built-in or listed in `"materials"`. An unknown material
    blocks both solvers.
 4. **Ports**: lumped ports only, built as below. Waveguide ports and Floquet ports are supported by
@@ -162,6 +166,8 @@ Materials: built-in `air FR4 RO4003C RO4350B RO5880 RO4450F TLY5 PTFE` (`backend
   smoothed to `cells_per_wavelength`; ≥ 3 cells across every feature gap; one run per excited port.
 - Palace (`backend/palace_sim.py`, `tools/palace`, Linux/macOS only): reads `out/<name>.palace.msh`
   (Gmsh 2.2, written by the build only when `solver` is `palace`; MFEM rejects the 4.1 `.msh`).
+  Metal volumes are left out of that mesh (holes whose skin is `bc:PEC`); meshed PEC interiors make
+  Palace abort with "Required mesh-end tag not found".
   Physical groups map to attributes: `mat:*` → domains, `bc:PEC` → PEC, `bc:radiation` → absorbing,
   `port:N` → lumped port N. One run excites every port in turn. With `fields_at`, a second short run
   solves only those frequencies (first excited port) and probes E on a uniform grid of

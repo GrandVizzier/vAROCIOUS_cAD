@@ -60,6 +60,22 @@ def test_config_maps_groups_to_attributes(result, tmp_path):
     assert (samples["MinFreq"], samples["MaxFreq"], samples["NSample"]) == (2.0, 4.0, 101)
 
 
+def test_metal_volumes_are_holes_in_the_palace_mesh(tmp_path):
+    # a PEC post bridging the dipole gap region: meshed PEC interiors make Palace abort
+    post = {"op": "box", "name": "post", "origin": ["4", "-1", "-1"], "size": ["1", "2", "2"], "material": "PEC"}
+    project = {**PALACE_DIPOLE, "history": PALACE_DIPOLE["history"][:-1] + [post, PALACE_DIPOLE["history"][-1]]}
+    r = _build(tmp_path, project)
+    assert any(g["name"] == "mat:PEC" for g in r["groups"])          # the main .msh keeps it
+    names = Path(r["files"]["palace_msh"]).read_text().split("$PhysicalNames")[1].split("$EndPhysicalNames")[0]
+    assert '"mat:PEC"' not in names and '"bc:PEC"' in names and '"mat:air"' in names
+    plain = _build(tmp_path / "plain", PALACE_DIPOLE)   # no metal volume: every group must survive
+    plain_names = Path(plain["files"]["palace_msh"]).read_text().split("$PhysicalNames")[1]
+    assert '"mat:air"' in plain_names and '"port:1"' in plain_names
+    pec_id = next(g["id"] for g in r["groups"] if g["name"] == "mat:PEC")
+    cfg = P.config(r, tmp_path / "d.msh", tmp_path / "post")
+    assert all(pec_id not in m["Attributes"] for m in cfg["Domains"]["Materials"])
+
+
 def test_read_port_s(tmp_path):
     csv = tmp_path / "port-S.csv"
     csv.write_text("            f (GHz),      |S[1][1]| (dB),    arg(S[1][1]) (deg.),      |S[2][1]| (dB),"

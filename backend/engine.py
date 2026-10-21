@@ -444,6 +444,12 @@ def build(path, out_dir="out", mesh=True):
                 # Palace/MFEM rejects Gmsh 4.1 files ("vertices indices are not unique"); 2.2 reads cleanly
                 files["palace_msh"] = str(out / f"{project.name}.palace.msh")
                 gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
+                # metal volumes become holes: their skin is already bc:PEC, and Palace fails on meshed
+                # PEC interiors ("Required mesh-end tag not found" / non-positive Jacobi diagonal).
+                # Only elements in physical groups are written, so dropping the group drops the elements.
+                metal = [(3, group_ids[(3, f"mat:{m}")]) for m in METALS if (3, f"mat:{m}") in group_ids]
+                if metal:  # an empty list would remove every physical group
+                    gmsh.model.removePhysicalGroups(metal)
                 gmsh.write(files["palace_msh"])
         else:
             gmsh.model.mesh.generate(2)
