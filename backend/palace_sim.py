@@ -23,7 +23,10 @@ ROOT = Path(__file__).resolve().parents[1]
 UNSUPPORTED = ("bc:master", "bc:slave", "bc:floquet")
 S_DB = re.compile(r"\|S\[(\d+)\]\[(\d+)\]\| \(dB\)")
 SWEEP_IT = re.compile(r"It (\d+)/(\d+):.*?(?:solve (\d+)/(\d+))?\)")
-GREEDY_IT = re.compile(r"Greedy iteration (\d+)")
+EXCITATION = re.compile(r"(?:Adding|Sweeping) excitation index \d+ \((\d+)/(\d+)\)")
+SOLVED = re.compile(r"solver (?:converged|did not converge) in \d+ iterations")  # one linear solve done
+ONLINE = "Beginning fast frequency sweep online phase"
+MAX_SAMPLES = 20  # Palace's AdaptiveMaxSamples default: PROM samples (= solves) per excitation
 PROBE_E = re.compile(r"(Re|Im)\{E_([xyz])\[(\d+)\]\} \(V/m\)")
 
 
@@ -106,22 +109,46 @@ def config(result, mesh_path, post_dir):
                              "MaxFreq": sim["sweep"]["stop"] / 1e9, "NSample": sim["sweep"]["points"]}],
                 "AdaptiveTol": p["adaptive_tol"],
             },
-            "Linear": {"Type": "Default", "KSPType": "GMRES", "Tol": 1e-8, "MaxIts": 300},
+            # ComplexCoarseSolve: 21 vs 108 GMRES iterations, 1.8x faster per solve, same S11, on the
+            # 28/39 GHz stacked patch (286k unknowns); ~20% more memory
+            "Linear": {"Type": "Default", "KSPType": "GMRES", "Tol": 1e-8, "MaxIts": 300,
+                       "ComplexCoarseSolve": True},
         },
     }
 
 
-def progress(line, sim):
-    """(percent or None, stage or None) from one line of Palace output."""
-    adaptive = sim["palace"]["adaptive_tol"] > 0
-    m = GREEDY_IT.search(line)
-    if m:  # adaptive offline phase: one full solve per greedy sample (most of the runtime)
-        return min(85.0, 85 * int(m.group(1)) / 20), f"adaptive sweep: sample {m.group(1)}"
-    m = SWEEP_IT.search(line)
-    if m:
-        a, b = (int(m.group(3)), int(m.group(4))) if m.group(3) else (int(m.group(1)), int(m.group(2)))
-        return (85 + 14 * a / b if adaptive else 99 * a / b), f"frequency {a}/{b}"
-    return None, None
+class Progress:
+    """Palace output line -> (percent or None, stage or None); one instance per run.
+
+    Adaptive sweep: the offline phase (most of the runtime) does one full solve per PROM sample,
+    port by port; each excited port gets an equal share of 85 %, filled up to MAX_SAMPLES solves
+    (it jumps ahead when a port converges earlier). The online sweep ("It a/b", cheap) takes the
+    rest. Without the adaptive sweep every "It a/b" line is one full solve."""
+
+    def __init__(self, sim):
+        self.adaptive = sim["palace"]["adaptive_tol"] > 0
+        self.port, self.ports, self.solves, self.online = 1, 1, 0, False
+
+    def __call__(self, line):
+        if ONLINE in line:
+            self.online = True
+            return 85.0, "fast sweep"
+        if self.adaptive and not self.online:
+            m = EXCITATION.search(line)
+            if m:
+                self.port, self.ports, self.solves = int(m.group(1)), int(m.group(2)), 0
+                return self._offline(), f"port {self.port}/{self.ports}: starting"
+            if SOLVED.search(line):
+                self.solves += 1
+                return self._offline(), f"port {self.port}/{self.ports}: solve {self.solves}"
+        m = SWEEP_IT.search(line)
+        if m:
+            a, b = (int(m.group(3)), int(m.group(4))) if m.group(3) else (int(m.group(1)), int(m.group(2)))
+            return (85 + 14 * a / b if self.adaptive else 99 * a / b), f"frequency {a}/{b}"
+        return None, None
+
+    def _offline(self):
+        return 85 * (self.port - 1 + min(self.solves, MAX_SAMPLES) / MAX_SAMPLES) / self.ports
 
 
 def read_port_s(path):

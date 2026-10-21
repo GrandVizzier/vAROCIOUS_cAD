@@ -212,25 +212,29 @@ def _push(msg):
         asyncio.run_coroutine_threadsafe(broadcast(msg), LOOP)
 
 
-def _progress(line, setup):
-    """(percent or None, stage or None) from one solver output line."""
+def _progress_parser(setup):
+    """line -> (percent or None, stage or None) for one run of this setup's solver."""
     if setup["solver"] == "palace":
-        return palace_sim.progress(line, setup)
-    m = ENERGY.search(line)
-    if m:  # openEMS: energy falls from 0 dB to the end criterion
-        db = -float(m.group(2)) if m.group(1) else float(m.group(2))
-        return min(99.0, 100 * db / setup["end_criteria_db"]), None
-    return None, None
+        return palace_sim.Progress(setup)
+
+    def openems(line):
+        m = ENERGY.search(line)
+        if m:  # energy falls from 0 dB to the end criterion
+            db = -float(m.group(2)) if m.group(1) else float(m.group(2))
+            return min(99.0, 100 * db / setup["end_criteria_db"]), None
+        return None, None
+    return openems
 
 
 def _watch_sim(pid, proc, setup):
     """Reader thread: parse solver progress lines, keep a log tail, push updates."""
     last = 0.0
+    parse = _progress_parser(setup)
     for line in proc.stdout:
         line = line.rstrip()
         if not line:
             continue
-        pct, stage = _progress(line, setup)
+        pct, stage = parse(line)
         energy = pct is not None and setup["solver"] == "openems"  # these stay out of the log
         if pct is not None:
             sim["progress"] = max(sim["progress"], pct)

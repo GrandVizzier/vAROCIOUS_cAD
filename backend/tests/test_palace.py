@@ -90,14 +90,22 @@ def test_read_port_s(tmp_path):
 
 
 def test_progress_lines():
-    setup = {"palace": {"adaptive_tol": 1e-3}}
-    assert P.progress("Greedy iteration 4 (n = 5): ω* = 2.1e+00 GHz", setup)[0] == pytest.approx(17)
-    pct, stage = P.progress("It 40/101: ω/2π = 2.780e+00 GHz (total elapsed time = 1.20e+01 s)", setup)
+    t = P.Progress({"palace": {"adaptive_tol": 1e-3}})
+    assert t("Adding excitation index 1 (1/2):") == (0.0, "port 1/2: starting")
+    pct, stage = t("GMRES solver converged in 21 iterations (avg. reduction factor: 4.1e-01)")
+    assert pct == pytest.approx(85 / 2 / 20) and stage == "port 1/2: solve 1"
+    assert t("Adding excitation index 2 (2/2):")[0] == pytest.approx(42.5)   # port 1 converged early
+    assert t("GMRES solver converged in 30 iterations")[1] == "port 2/2: solve 1"
+    assert t("Beginning fast frequency sweep online phase") == (85.0, "fast sweep")
+    assert t("Sweeping excitation index 1 (1/2):") == (None, None)            # online: no reset
+    pct, stage = t("It 40/101: ω/2π = 2.780e+01 GHz (total elapsed time = 1.20e+01 s)")
     assert pct == pytest.approx(85 + 14 * 40 / 101) and stage == "frequency 40/101"
-    pct, _ = P.progress("It 3/101: ω/2π = 2.0e+00 GHz (total elapsed time = 1.0e+00 s, solve 104/202)",
-                        {"palace": {"adaptive_tol": 0}})
+    assert t(" Sol. ||E|| = 1.0e+00") == (None, None)
+
+    direct = P.Progress({"palace": {"adaptive_tol": 0}})   # no PROM: every It line is a solve
+    pct, _ = direct("It 3/101: ω/2π = 2.0e+00 GHz (total elapsed time = 1.0e+00 s, solve 104/202)")
     assert pct == pytest.approx(99 * 104 / 202)
-    assert P.progress(" Sol. ||E|| = 1.0e+00", setup) == (None, None)
+    assert direct("GMRES solver converged in 21 iterations") == (None, None)
 
 
 def test_field_run_config_and_parsing(result, tmp_path):
