@@ -4,7 +4,9 @@ Project id = path under projects/ without .json, e.g. "examples/patch_on_fr4".
 """
 import asyncio
 import json
+import os
 import re
+import signal
 import subprocess
 import sys
 import threading
@@ -19,7 +21,8 @@ from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from watchfiles import Change, awatch
 
-from .openems_sim import preflight
+from . import palace_sim
+from .solvers import preflight
 from .schema import Project, Simulation, format_validation_error
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -209,22 +212,35 @@ def _push(msg):
         asyncio.run_coroutine_threadsafe(broadcast(msg), LOOP)
 
 
-def _watch_sim(pid, proc, end_db):
-    """Reader thread: parse openEMS progress lines, keep a log tail, push updates."""
+def _progress(line, setup):
+    """(percent or None, stage or None) from one solver output line."""
+    if setup["solver"] == "palace":
+        return palace_sim.progress(line, setup)
+    m = ENERGY.search(line)
+    if m:  # openEMS: energy falls from 0 dB to the end criterion
+        db = -float(m.group(2)) if m.group(1) else float(m.group(2))
+        return min(99.0, 100 * db / setup["end_criteria_db"]), None
+    return None, None
+
+
+def _watch_sim(pid, proc, setup):
+    """Reader thread: parse solver progress lines, keep a log tail, push updates."""
     last = 0.0
     for line in proc.stdout:
         line = line.rstrip()
         if not line:
             continue
-        m = ENERGY.search(line)
-        if m:  # energy falls from 0 dB to the end criterion
-            db = -float(m.group(2)) if m.group(1) else float(m.group(2))
-            sim["progress"] = max(sim["progress"], min(99.0, 100 * db / end_db))
-        else:
+        pct, stage = _progress(line, setup)
+        energy = pct is not None and setup["solver"] == "openems"  # these stay out of the log
+        if pct is not None:
+            sim["progress"] = max(sim["progress"], pct)
+        if stage:
+            sim["stage"] = stage
+        if not energy:
             sim["log"].append(line)
             if line.startswith("[sim]"):
                 sim["stage"] = line[6:]
-        if time.time() - last > 0.5 or not m:
+        if time.time() - last > 0.5 or line.startswith("[sim]"):
             last = time.time()
             _push({"type": "sim", "id": pid, "status": "running", "progress": sim["progress"],
                    "stage": sim["stage"]})
@@ -242,26 +258,58 @@ def cancel_simulation(pid: str):
     if sim["pid"] != pid or sim["status"] != "running":
         raise HTTPException(409, "no running simulation for this project")
     sim["status"] = "cancelled"
-    sim["proc"].terminate()
+    if hasattr(os, "killpg"):  # the whole group: Palace runs under mpirun in child processes
+        os.killpg(sim["proc"].pid, signal.SIGTERM)
+    else:
+        sim["proc"].terminate()
     return {"ok": True}
 
 
-@app.post("/simulate/{pid:path}")
-def start_simulation(pid: str):
-    path = project_path(pid)
+def _launch(pid, extra_args, setup):
+    """Start simulate.py for a built project; one run at a time (see `sim`)."""
+    proc = subprocess.Popen(sim_command(project_path(pid)) + extra_args, cwd=ROOT, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
+                            start_new_session=hasattr(os, "killpg"))
+    sim.update(pid=pid, proc=proc, status="running", progress=0.0, stage="starting", log=deque(maxlen=300))
+    threading.Thread(target=_watch_sim, daemon=True, args=(pid, proc, setup)).start()
+
+
+def _built(pid):
+    project_path(pid)
     if sim["status"] == "running":
         raise HTTPException(409, f"a simulation is already running ({sim['pid']})")
     entry = state.get(pid)
     if not entry or entry["status"] != "ok":
         raise HTTPException(400, "the project must build successfully before simulating")
-    problems = preflight(entry["result"])
+    return entry["result"]
+
+
+@app.post("/simulate/{pid:path}/fields")
+def recompute_fields(pid: str, points: int = Body(..., embed=True, ge=8, le=100)):
+    """Palace: re-probe the last run's E-field on a `points` grid (short run, no new sweep).
+    The project file is not changed, so the results stay current."""
+    result = _built(pid)
+    d = sims_dir(pid)
+    res = json.loads((d / "results.json").read_text(encoding="utf-8")) if d and (d / "results.json").exists() else None
+    if not res or res.get("solver") != "palace":
+        raise HTTPException(400, "no Palace results for this project; run Analyze with Palace first")
+    if res.get("source_hash") != result.get("source_hash"):
+        raise HTTPException(400, "the results are older than the geometry; run Analyze again")
+    if not result["simulation"]["fields_at"]:
+        raise HTTPException(400, 'no field frequencies; tick "Plot E-field" in the Analysis tab and Analyze')
+    # progress: one Palace solve per field frequency
+    setup = {**result["simulation"], "palace": {**result["simulation"]["palace"], "adaptive_tol": 0}}
+    _launch(pid, ["--fields-only", "--field-points", str(points)], setup)
+    return {"ok": True}
+
+
+@app.post("/simulate/{pid:path}")
+def start_simulation(pid: str):
+    result = _built(pid)
+    problems = preflight(result)
     if problems:
         raise HTTPException(400, "; ".join(problems))
-    proc = subprocess.Popen(sim_command(path), cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, encoding="utf-8", errors="replace")
-    sim.update(pid=pid, proc=proc, status="running", progress=0.0, stage="starting", log=deque(maxlen=300))
-    threading.Thread(target=_watch_sim, daemon=True,
-                     args=(pid, proc, entry["result"]["simulation"]["end_criteria_db"])).start()
+    _launch(pid, [], result["simulation"])
     return {"ok": True}
 
 

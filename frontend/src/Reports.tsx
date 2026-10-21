@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { MouseEvent } from "react";
-import { SimResults } from "./api";
+import { SOLVER_LABEL, SimResults } from "./api";
 import { REPORTS, Report } from "./ProjectTree";
 
 // HFSS default trace colours (brighter set on the dark theme)
@@ -21,8 +21,8 @@ function ticks(lo: number, hi: number, n = 6) {
 
 const fmt = (v: number) => (Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-3 && v !== 0) ? v.toExponential(2) : +v.toPrecision(5) + "");
 
-function XYPlot({ title, xLabel, yLabel, traces, markMin }: {
-  title: string; xLabel: string; yLabel: string; traces: Trace[]; markMin?: boolean;
+function XYPlot({ title, xLabel, yLabel, traces, markMin, brand }: {
+  title: string; xLabel: string; yLabel: string; traces: Trace[]; markMin?: boolean; brand: string;
 }) {
   const W = 900, H = 500, L = 80, R = 230, T = 40, B = 60;
   const COLORS = palette();
@@ -51,7 +51,7 @@ function XYPlot({ title, xLabel, yLabel, traces, markMin }: {
     <svg className="plot" viewBox={`0 0 ${W} ${H}`} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
       <rect x={0} y={0} width={W} height={H} className="pbg" />
       <text x={L} y={24} className="ptitle">{title}</text>
-      <text x={W - 12} y={24} className="pbrand" textAnchor="end">openEMS · FDTD</text>
+      <text x={W - 12} y={24} className="pbrand" textAnchor="end">{brand}</text>
       {yt.map((v) => <g key={"y" + v}>
         <line x1={L} x2={W - R} y1={py(v)} y2={py(v)} className="grid" />
         <text x={L - 8} y={py(v) + 4} textAnchor="end" className="tick">{fmt(v)}</text>
@@ -185,7 +185,8 @@ export default function ResultsTab({ res, report, onReport }: {
       : Object.entries(res.Z).flatMap(([k, [re, im]]) => [
           { name: `re(Z(${k}))`, x: f, y: re }, { name: `im(Z(${k}))`, x: f, y: im }]);
     const yl = { sdb: "dB", sphase: "Phase (deg)", vswr: "VSWR", z: "Impedance (Ω)" }[report];
-    body = <XYPlot title={REPORTS[report]} xLabel="Freq (GHz)" yLabel={yl} traces={tr} markMin={report === "sdb" || report === "vswr"} />;
+    body = <XYPlot title={REPORTS[report]} xLabel="Freq (GHz)" yLabel={yl} traces={tr} markMin={report === "sdb" || report === "vswr"}
+                   brand={SOLVER_LABEL[res.solver ?? "openems"]} />;
   }
   return (
     <div className="results">

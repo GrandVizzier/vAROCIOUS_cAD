@@ -9,8 +9,9 @@ electromagnetic FEM solvers, and shows it live in the browser.
   `bc:radiation`, `bc:PEC`, `bc:floquet`, `bc:master1`/`bc:slave1`/…, and `port:<n>`.
 - It exports a volume mesh (`.msh`) and CAD (`.step`).
 - The viewer  updates live whenever a project file changes.
-- **Simulate it** with the open-source FDTD solver [openEMS](https://openems.de): set up a frequency
-  sweep in the Analysis tab, then view S-parameters, a Smith chart, impedance, VSWR and E-field
+- **Simulate it** with the open-source FDTD solver [openEMS](https://openems.de) or the FEM solver
+  [Palace](https://awslabs.github.io/palace/): pick the solver and set up a frequency sweep in the
+  Analysis tab, then view S-parameters, a Smith chart, impedance, VSWR and E-field
   overlays. The UI is laid out like HFSS.
 - **[Claude Code](https://claude.com/claude-code) writes the geometry for you.** Describe an antenna
   in plain English, or point it at a paper. It writes the project JSON, builds it, checks the
@@ -102,6 +103,29 @@ From the command line: `.venv\Scripts\python scripts\simulate.py projects\<name>
 openEMS can't do periodic or Floquet boundaries, so the reflectarray unit cell can only be built,
 not simulated.
 
+### Simulating with Palace (FEM)
+
+[Palace](https://awslabs.github.io/palace/) solves on the build's own tetrahedral mesh (`out/<name>.msh`),
+so curved and tilted parts are exact instead of staircased. Pick **Palace** under **Analysis → Solver**
+(or set `"solver": "palace"` in the `simulation` block). Palace needs a `radiation` boundary on the
+air box; it runs one adaptive fast sweep that excites every port in turn. Tick **Plot E-field** in the
+Analysis tab to get the field overlay with either solver; with Palace this adds a short second run at
+the field frequencies that samples E on a grid (**Probe grid points**). To sharpen or coarsen a Palace
+field plot later, change **Grid density** in the E-field panel and press **Recompute field**: it
+re-samples the field without re-running the sweep. Periodic/Floquet cells aren't
+wired up yet.
+
+Palace is Linux/macOS only and is built from source with MPI (about an hour). On Ubuntu:
+```bash
+sudo apt-get install -y build-essential cmake git gfortran pkg-config libopenmpi-dev openmpi-bin libopenblas-dev
+git clone https://github.com/awslabs/palace.git ~/src/palace && cd ~/src/palace && git checkout v0.18.1
+export CMAKE_POLICY_VERSION_MINIMUM=3.5   # CMake 4 rejects some bundled dependencies otherwise
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<repo>/tools/palace \
+  -DPALACE_WITH_SLEPC=OFF -DPALACE_WITH_ARPACK=ON -DPALACE_WITH_SUNDIALS=OFF -DPALACE_WITH_MAGMA=OFF -DPALACE_WITH_LIBXSMM=OFF
+cmake --build build -j4   # keep -j low on machines with < 16 GB RAM
+```
+The app finds `tools/palace/bin/palace`; set `PALACE=/path/to/palace` to use another install.
+
 ## 4. Generate geometry with Claude Code
 
 Open a terminal **in the repo root** and run:
@@ -176,14 +200,14 @@ example with master/slave walls and a Floquet port.
 ## 7. Repository layout
 
 ```
-backend/    schema.py, expr.py (safe evaluator), engine.py (all Gmsh code), openems_sim.py (solver),
-            render.py, server.py, tests/
+backend/    schema.py, expr.py (safe evaluator), engine.py (all Gmsh code), solvers.py (picks the
+            backend), openems_sim.py / palace_sim.py (solvers), render.py, server.py, tests/
 scripts/    build.py / simulate.py (CLIs, also used by the server), dev.py (starts both servers),
             install_openems.py
 frontend/   Vite + React + TypeScript + react-three-fiber viewer
 projects/   your project JSON files; examples/ are reference fixtures (read-only in the UI)
 out/        build outputs and out/sims/<name>/ simulation results (gitignored)
-tools/      openEMS install (gitignored)
+tools/      openEMS and Palace installs (gitignored)
 CLAUDE.md   context and instructions for Claude Code
 ```
 

@@ -383,6 +383,13 @@ def _tessellate(names, meta):
     return objects
 
 
+def palace_mesh_size(simulation, materials):
+    """FEM max element size (m): wavelength at the stop frequency in the densest dielectric,
+    divided by palace.elements_per_wavelength (the tetra mesh is the solver's mesh)."""
+    epsr = max([1.0] + [v["epsr"] for v in materials.values() if v and not v["metal"]])
+    return C0 / simulation["sweep"]["stop"] / math.sqrt(epsr) / simulation["palace"]["elements_per_wavelength"]
+
+
 def build(path, out_dir="out", mesh=True):
     """Build a project file. Returns a JSON-serialisable result dict; raises BuildError."""
     t0 = time.time()
@@ -420,6 +427,8 @@ def build(path, out_dir="out", mesh=True):
         if mesh:
             if "mesh_size" in values:
                 gmsh.option.setNumber("Mesh.MeshSizeMax", values["mesh_size"] * scale)
+            elif simulation and simulation["solver"] == "palace":
+                gmsh.option.setNumber("Mesh.MeshSizeMax", palace_mesh_size(simulation, materials))
             gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 12)
             # default 3D Delaunay; HXT (Algorithm3D=10) was tried: ~2x faster but produced
             # corrupt meshes (elements on node 0) on the multilayer TCDA cell
@@ -431,6 +440,11 @@ def build(path, out_dir="out", mesh=True):
             stats["tetrahedra"] = len(gmsh.model.mesh.getElementsByType(4)[0])
             files["msh"] = str(out / f"{project.name}.msh")
             gmsh.write(files["msh"])
+            if simulation and simulation["solver"] == "palace":
+                # Palace/MFEM rejects Gmsh 4.1 files ("vertices indices are not unique"); 2.2 reads cleanly
+                files["palace_msh"] = str(out / f"{project.name}.palace.msh")
+                gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
+                gmsh.write(files["palace_msh"])
         else:
             gmsh.model.mesh.generate(2)
         files["step"] = str(out / f"{project.name}.step")

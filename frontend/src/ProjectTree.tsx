@@ -69,7 +69,7 @@ export default function ProjectTree({ projects, current, onPick, r, sim, hidden,
             <ul>
               <li onClick={() => onOpen("analysis")}>
                 <span className="ico">⚙</span>
-                <span className="grow">Setup1 {r.simulation ? "(openEMS)" : "(not defined)"}</span>
+                <span className="grow">Setup1 {r.simulation ? `(${r.simulation.solver === "palace" ? "Palace" : "openEMS"})` : "(not defined)"}</span>
               </li>
               {r.simulation && (
                 <li className="indent" onClick={() => onOpen("analysis")}>

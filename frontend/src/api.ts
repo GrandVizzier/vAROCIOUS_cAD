@@ -30,14 +30,23 @@ export type PortInfo = {
   excite: boolean; ok: boolean; problems: string[];
 };
 
+export type Solver = "openems" | "palace";
+export const SOLVER_LABEL: Record<Solver, string> = { openems: "openEMS · FDTD", palace: "Palace · FEM" };
+
+export type PalaceSetup = {
+  order: number; elements_per_wavelength: number; adaptive_tol: number; absorbing_order: 1 | 2; processes: number;
+  field_points: number;
+};
+
 export type SimSetup = {
-  solver: "openems";
+  solver: Solver;
   sweep: { start: string; stop: string; points: number };
   fields_at: string[];
   mesh: { cells_per_wavelength: number; ratio: number };
   absorber: "PML_8" | "MUR";
   end_criteria_db: number;
   max_timesteps: number;
+  palace: PalaceSetup;
 };
 
 /** evaluated setup as returned in the build result (Hz) */
@@ -46,12 +55,16 @@ export type SimSetupValues = Omit<SimSetup, "sweep" | "fields_at"> & {
 };
 
 export type SimResults = {
+  solver?: Solver; // absent in results from before the Palace backend (openEMS)
   freqs: number[];
   S: Record<string, [number[], number[]]>; // "i,j" -> [re, im]
   Z: Record<string, [number[], number[]]>; // port -> [re, im]
   ports: { index: number; impedance: number }[];
   fields_at: number[];
-  cells: number;
+  cells: number; // FDTD cells (openEMS) or tetrahedra (Palace)
+  field_points?: number | null; // Palace: probe grid density used for fields.npz
+  field_grid?: number[] | null; // Palace: probe grid shape [nx, ny, nz]
+  fields_updated_at?: number; // Palace: set when the field plot was recomputed
   seconds: number;
   warnings: string[];
 };
@@ -113,6 +126,10 @@ export const getSim = (id: string) => fetch(`/sim/${id}`).then((r) => json<SimSt
 export const startSim = (id: string) => fetch(`/simulate/${id}`, { method: "POST" }).then((r) => json<{ ok: boolean }>(r));
 export const cancelSim = (id: string) =>
   fetch(`/simulate/${id}/cancel`, { method: "POST" }).then((r) => json<{ ok: boolean }>(r));
+export const recomputeFields = (id: string, points: number) =>
+  fetch(`/simulate/${id}/fields`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ points }),
+  }).then((r) => json<{ ok: boolean }>(r));
 export const getField = (id: string, f: number, plane: string, pos: number) =>
   fetch(`/sim/${id}/field?f=${f}&plane=${plane}&pos=${pos}`).then((r) => json<FieldPlane>(r));
 

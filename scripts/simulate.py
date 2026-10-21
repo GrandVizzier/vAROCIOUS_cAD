@@ -1,6 +1,9 @@
-"""Build + simulate a project with openEMS: python scripts/simulate.py projects/<name>.json
+"""Build + simulate a project: python scripts/simulate.py projects/<name>.json
+
+The solver is the project's simulation.solver: "openems" (FDTD) or "palace" (FEM).
 
 Writes out/sims/<name>/results.json (+ fields.npz). Exit 1 on build/setup errors, 2 on solver errors.
+--fields-only re-probes the E-field of the last Palace run (--field-points N) without a new sweep.
 """
 import argparse
 import json
@@ -12,12 +15,14 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.engine import BuildError, build  # noqa: E402
-from backend.openems_sim import SimError, preflight, run  # noqa: E402
+from backend.palace_sim import recompute_fields  # noqa: E402
+from backend.solvers import SimError, preflight, run  # noqa: E402
 
 
 def summary(res, values):
     f = np.array(res["freqs"])
-    lines = [f"\nSimulated in {res['seconds']} s, {res['cells']:,} cells"]
+    mesh = "tetrahedra" if res.get("solver") == "palace" else "cells"
+    lines = [f"\nSimulated with {res.get('solver', 'openems')} in {res['seconds']} s, {res['cells']:,} {mesh}"]
     for key, (re, im) in res["S"].items():
         s = np.array(re) + 1j * np.array(im)
         db = 20 * np.log10(np.abs(s))
@@ -42,6 +47,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("project")
     ap.add_argument("--out", default="out")
+    ap.add_argument("--fields-only", action="store_true", help="Palace: recompute the E-field plot only")
+    ap.add_argument("--field-points", type=int, help="Palace probe grid, points along the longest side")
     args = ap.parse_args()
     try:
         r = build(args.project, args.out)
@@ -53,8 +60,16 @@ def main():
     if problems:
         print("ERROR: cannot simulate: " + "; ".join(problems), file=sys.stderr)
         return 1
+    if args.field_points and r["simulation"]:
+        r["simulation"]["palace"]["field_points"] = args.field_points
+    log = lambda m: print(m, flush=True)  # noqa: E731
+    out = Path(args.out) / "sims" / r["name"]
     try:
-        res = run(r, Path(args.out) / "sims" / r["name"], log=lambda m: print(m, flush=True))
+        if args.fields_only:
+            res = recompute_fields(r, out, r["simulation"]["palace"]["field_points"], log=log)
+            print(f"\nE-field recomputed on a {'×'.join(map(str, res['field_grid']))} grid", flush=True)
+            return 0
+        res = run(r, out, log=log)
     except SimError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 2

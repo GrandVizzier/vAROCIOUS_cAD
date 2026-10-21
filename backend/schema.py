@@ -119,15 +119,27 @@ class MeshSettings(BaseModel):
     ratio: Annotated[float, Field(ge=1.05, le=2.0)] = 1.4
 
 
+class PalaceSettings(BaseModel):
+    """Palace (FEM, frequency domain). The tetra mesh is the build's .msh."""
+    model_config = ConfigDict(extra="forbid")
+    order: Annotated[int, Field(ge=1, le=4)] = 2            # finite element order
+    elements_per_wavelength: Annotated[float, Field(ge=2, le=40)] = 6  # at stop freq, densest dielectric
+    adaptive_tol: Annotated[float, Field(ge=0, le=0.1)] = 1e-3  # fast sweep (PROM); 0 = solve every point
+    absorbing_order: Literal[1, 2] = 1  # bc:radiation as a 1st/2nd order absorbing boundary
+    processes: Annotated[int, Field(ge=1, le=256)] = 4      # MPI ranks
+    field_points: Annotated[int, Field(ge=8, le=100)] = 40  # E-field probe grid, along the longest side
+
+
 class Simulation(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    solver: Literal["openems"] = "openems"
+    solver: Literal["openems", "palace"] = "openems"
     sweep: Sweep
-    fields_at: list[Expr] = []          # Hz; frequencies for E/H field snapshots
+    fields_at: list[Expr] = []          # Hz; frequencies for E/H field snapshots (openEMS)
     mesh: MeshSettings = MeshSettings()
     absorber: Literal["PML_8", "MUR"] = "PML_8"
     end_criteria_db: Annotated[float, Field(le=-10, ge=-80)] = -40
     max_timesteps: Annotated[int, Field(ge=1000)] = 300000
+    palace: PalaceSettings = PalaceSettings()
 
 
 class Project(BaseModel):

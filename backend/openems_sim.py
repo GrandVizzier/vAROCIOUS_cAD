@@ -35,8 +35,7 @@ def preflight(result):
     groups = {g["name"] for g in result["groups"]}
     bad = sorted(g for g in groups if g.startswith(UNSUPPORTED))
     if bad:
-        problems.append(f"openEMS has no periodic/Floquet boundaries ({', '.join(bad)}); "
-                        "this model needs a FEM solver such as Palace")
+        problems.append(f"openEMS has no periodic/Floquet boundaries ({', '.join(bad)})")
     if not result["ports"]:
         problems.append("no ports defined")
     elif not any(p["excite"] for p in result["ports"]):
@@ -266,6 +265,7 @@ def run(result, out_dir, log=print):
     mag = np.hypot(*np.array(S[f"{k},{k}"]))
     res = {
         "name": result["name"],
+        "solver": "openems",
         "source_hash": result.get("source_hash"),
         "freqs": freqs.tolist(),
         "S": S,

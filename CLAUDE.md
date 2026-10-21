@@ -5,7 +5,9 @@ conformal, labeled `.msh` + `.step`, plus a live 3D viewer.
 
 ## Stack
 - Backend: Python 3.13 (`.venv`), FastAPI, `gmsh` (OCC kernel only, never `gmsh.model.geo`),
-  pydantic v2, watchfiles, WebSockets. Solver: openEMS 0.37 (`tools/openEMS`, `backend/openems_sim.py`).
+  pydantic v2, watchfiles, WebSockets. Solvers (`simulation.solver`, dispatched by `backend/solvers.py`):
+  openEMS 0.37 FDTD (`tools/openEMS`, `backend/openems_sim.py`) and Palace 0.18 FEM (`tools/palace`,
+  `backend/palace_sim.py`, Linux/macOS).
 - Frontend: Vite + React + TypeScript, `@react-three/fiber` + `@react-three/drei` (`frontend/`).
 
 ## Commands (from repo root)
@@ -13,8 +15,8 @@ Use the venv's Python: `.venv\Scripts\python` on Windows, `.venv/bin/python` on 
 (written `PY` below). If `.venv` doesn't exist yet, set it up first, following README §2.
 - Run app: `PY scripts/dev.py` → http://localhost:5173 (API on :8000)
 - Build one project: `PY scripts/build.py projects/<name>.json --render`
-- Simulate one project: `PY scripts/simulate.py projects/<name>.json` (needs openEMS:
-  `PY scripts/install_openems.py` on Windows)
+- Simulate one project: `PY scripts/simulate.py projects/<name>.json` (uses `simulation.solver`;
+  openEMS: `PY scripts/install_openems.py` on Windows; Palace: README "Simulating with Palace")
 - Tests: `PY -m pytest`
 - Frontend type-check: `cd frontend && npx tsc --noEmit`
 - Reading a paper (PDF): `PY -m pip install pymupdf`, then extract the text and render the figure
@@ -58,9 +60,36 @@ Use the venv's Python: `.venv\Scripts\python` on Windows, `.venv/bin/python` on 
 - Optional `mesh_size` variable sets the max element size (project units).
 - Sheets default to PEC; volumes default to air.
 
-## Ports & simulation (openEMS, FDTD)
-- A project is simulated when it has `ports` and a `simulation` block (template:
-  `projects/patch_inset_2p4ghz.json`; dipole gap port: `projects/examples/dipole_halfwave.json`).
+## Ports & simulation (openEMS FDTD / Palace FEM)
+Two solvers read the same project: openEMS (FDTD on a rectilinear grid built from the CAD features)
+and Palace (FEM on the build's tetra mesh). **Build every simulatable project so both can run it
+unchanged**; switching solver is then a one-word edit of `simulation.solver` (or the Analysis tab's
+Solver dropdown). Templates: `projects/patch_inset_2p4ghz.json` (microstrip inset feed),
+`projects/examples/dipole_halfwave.json` (gap port).
+
+### Model rules that keep a project valid for both solvers
+1. **Air box**: one axis-aligned `box` (name it `airbox`, material `air`) enclosing every other object,
+   ≥ λ/4 (λ at the lowest sweep frequency) from any metal or port on every side.
+   - Always add `{"type": "radiation", "target": "airbox", "faces": "outer"}`. Palace requires it
+     (it becomes the absorbing boundary). openEMS ignores the group and puts its absorber (`PML_8` /
+     `MUR`) on the domain bounding box, which is this box. A box, not a sphere: openEMS's domain is
+     the bounding box.
+2. **Metal**: `PEC` / `copper` sheets (`rectangle`, `disk`, booleans of them) or volumes. Use zero-
+   thickness sheets for thin traces, patches and ground planes (cheaper for both). Keep sheets in
+   XY / YZ / XZ planes: openEMS cannot place tilted sheets (Palace can, so a tilted sheet makes the
+   project Palace-only; say so). Curved volumes are fine for both (openEMS staircases them).
+3. **Dielectrics**: volumes whose material is built-in or listed in `"materials"`. An unknown material
+   blocks both solvers.
+4. **Ports**: lumped ports only, built as below. Waveguide ports and Floquet ports are supported by
+   neither: say so and propose a lumped-fed alternative.
+5. **Mesh size**: leave out the `mesh_size` variable for simulated projects. Without it the build sizes
+   Palace's tetra mesh from `palace.elements_per_wavelength`; with it, `mesh_size` wins, and a coarse
+   value (the patch template's `lam0/10` gives ~4,900 tetrahedra) costs Palace accuracy. openEMS ignores
+   the tetra mesh. Only set `mesh_size` if the build is too slow, and then keep it ≤ λ/6 at the stop
+   frequency in the densest dielectric (`c0/f_stop/sqrt(er_max)/6`, in project units).
+6. **Periodic cells** (`master/slave`, `floquet` boundaries) build fine but neither solver runs them.
+
+### Lumped ports
 - **Lumped port** = a flat, axis-aligned sheet (`material: "port"`) that bridges two conductors, plus
   `{"target": "<sheet>", "type": "lumped", "impedance": "50", "direction": "+z"}`.
   `direction` lies IN the sheet and points from one conductor to the other. Width ≈ trace/arm width.
@@ -80,22 +109,68 @@ Use the venv's Python: `.venv\Scripts\python` on Windows, `.venv/bin/python` on 
 
   - Impedance: the system reference (50 Ω unless the paper states otherwise). Make sure the feed line
     is actually designed for it (e.g. Hammerstad `wf` for 50 Ω).
-  - Waveguide/horn feeds need waveguide ports (not supported by openEMS here): say so and propose a
-    lumped-fed alternative. Unit cells with Floquet ports can be built but not simulated (see below).
-  - Keep the port ≥ λ/4 from the air-box faces (PML eats the outer 8 cells).
-- `simulation`: `sweep` start/stop are Hz expressions (`"0.8*f0"`), `points`, `fields_at` (Hz list),
-  `mesh.cells_per_wavelength` (20 default; 15 for quick checks), `absorber` `PML_8`|`MUR`,
-  `end_criteria_db` (-40). Keep ≥ λ/4 air (λ at the lowest frequency) between metal and the air box.
-- Materials: built-in `air FR4 RO4003C RO4350B RO5880 RO4450F TLY5 PTFE` (`backend/engine.py`
-  `MATERIAL_LIBRARY`); anything else goes in project `"materials": {"Name": {"epsr": "..", "tand": ".."}}`
-  (take values from the paper/datasheet). Metals (`PEC`, `copper`) are perfect conductors.
-- openEMS limits: no periodic/master-slave/Floquet (the build is fine, `simulate.py` refuses), sheets
-  must be axis-aligned; curved parts are staircased on the grid.
-- Run `PY scripts/simulate.py projects/<name>.json` (minutes; prints cells, runtime, S11 minimum and
-  −10 dB band, Z at f0). Check the resonance against the target and |S11| < −10 dB; if the
-  resonance is off, rescale the resonant dimension (≈ 1/f) in `variables` and re-run. Report the
-  numbers you got, not the design targets. Results land in `out/sims/<name>/`; the app's Results
-  tab and E-field overlay pick them up.
+  - Keep every port ≥ λ/4 from the air-box faces (openEMS's PML eats the outer 8 cells; Palace's
+    absorbing boundary is only accurate away from sources).
+
+### The `simulation` block (one block serves both solvers)
+Write the full block, with the settings for both solvers, so switching never needs other edits:
+```json
+"simulation": {
+  "solver": "openems",
+  "sweep": {"start": "0.8*f0", "stop": "1.2*f0", "points": 401},
+  "fields_at": ["f0"],
+  "mesh": {"cells_per_wavelength": 20, "ratio": 1.4},
+  "absorber": "PML_8",
+  "end_criteria_db": -40,
+  "palace": {"order": 2, "elements_per_wavelength": 6, "adaptive_tol": 1e-3, "absorbing_order": 1, "processes": 4}
+}
+```
+| Setting | Used by | Meaning |
+|---|---|---|
+| `solver` | both | `"openems"` or `"palace"` |
+| `sweep` | both | start/stop as Hz expressions, `points` |
+| `fields_at` | both | E-field plot frequencies (Hz); `[]` = no field plot (Analysis tab: "Plot E-field") |
+| `mesh.cells_per_wavelength`, `mesh.ratio` | openEMS | grid density (20; 15 for quick checks) and grading |
+| `absorber`, `end_criteria_db`, `max_timesteps` | openEMS | `PML_8` / `MUR`; energy decay to stop at (−40 dB) |
+| `palace.elements_per_wavelength` | Palace (via the build) | max tetra size λ/N at the stop frequency in the densest dielectric |
+| `palace.order` | Palace | finite element order (2) |
+| `palace.adaptive_tol` | Palace | adaptive fast sweep tolerance (1e-3); 0 solves every point |
+| `palace.absorbing_order` | Palace | 1st/2nd order absorbing boundary on `bc:radiation` |
+| `palace.processes` | Palace | MPI ranks (≤ CPU cores) |
+| `palace.field_points` | Palace | E-field probe grid, points along the model's longest side (40) |
+
+Materials: built-in `air FR4 RO4003C RO4350B RO5880 RO4450F TLY5 PTFE` (`backend/engine.py`
+`MATERIAL_LIBRARY`); anything else goes in project `"materials": {"Name": {"epsr": "..", "tand": ".."}}`
+(take values from the paper/datasheet). Metals (`PEC`, `copper`) are perfect conductors in both.
+
+### Choosing and running a solver
+- Use the solver the user asks for. Otherwise default to openEMS: on `patch_inset_2p4ghz` it ran in
+  75 s vs Palace's 196 s. Suggest Palace for curved or tilted geometry (exact on the tetra mesh, no
+  staircasing) and narrowband / high-Q structures. Both give the E-field plot.
+- Run `PY scripts/simulate.py projects/<name>.json` (uses `simulation.solver`; minutes; prints the solver,
+  mesh size, runtime, S11 minimum and −10 dB band, Z at f0). If it prints `cannot simulate:`, fix each
+  listed problem (the same list appears in the app's Validation Check).
+- Check the resonance against the target and |S11| < −10 dB; if the resonance is off, rescale the
+  resonant dimension (≈ 1/f) in `variables` and re-run. Report the numbers you got, not the design
+  targets. Results land in `out/sims/<name>/`; the app's Results tab picks them up.
+- Cross-check when the user wants confidence: run both solvers on the same file and compare. Expect
+  resonances within a few percent (patch template: openEMS 2.308 GHz, Palace 2.276 GHz). Deep S11
+  nulls differ much more (−35 vs −16 dB there), so compare frequencies and bands, not null depths.
+
+### Solver specifics (reference)
+- openEMS (`backend/openems_sim.py`, `tools/openEMS`): rectilinear grid from CAD feature lines,
+  smoothed to `cells_per_wavelength`; ≥ 3 cells across every feature gap; one run per excited port.
+- Palace (`backend/palace_sim.py`, `tools/palace`, Linux/macOS only): reads `out/<name>.palace.msh`
+  (Gmsh 2.2, written by the build only when `solver` is `palace`; MFEM rejects the 4.1 `.msh`).
+  Physical groups map to attributes: `mat:*` → domains, `bc:PEC` → PEC, `bc:radiation` → absorbing,
+  `port:N` → lumped port N. One run excites every port in turn. With `fields_at`, a second short run
+  solves only those frequencies (first excited port) and probes E on a uniform grid of
+  `palace.field_points` along the longest side; fields are rescaled to the overlay's convention
+  (peak, 1 W incident: Palace's own excitation is V_inc = √(R·1 W), read from `port-V.csv`). The grid
+  is uniform, so features thinner than its spacing (substrates, gaps) are not resolved in the plot;
+  raise `field_points` for those. To change only the plot density after a run (no new sweep, project
+  file untouched): the overlay's "Grid density" + "Recompute field", or
+  `PY scripts/simulate.py projects/<name>.json --fields-only --field-points N`.
 
 ## Generating geometry
 When the user describes a model:
@@ -109,18 +184,23 @@ When the user describes a model:
      `eeff = (er+1)/2 + (er-1)/2*(1+12*h/W)**-0.5`,
      `dL = 0.412*h*(eeff+0.3)*(W/h+0.264)/((eeff-0.258)*(W/h+0.8))`,
      `L = c0/(2*f0*sqrt(eeff)) - 2*dL`. Keep SI ↔ mm consistent (e.g. `c0/f0*1000` for λ in mm).
+     Both solvers put this model's resonance ~4 % low on FR4; expect to retune `L`.
    - Inset feed: `y0 = L/pi*acos(sqrt(Z0/Rin_edge))`, where the edge resistance is estimated from
      `G1 = W/(120*lambda0)` (for W < λ0): `Rin_edge ≈ 1/(2*G1)`.
    - 50 Ω microstrip width: Hammerstad/Wheeler synthesis (`A`/`B` formulas).
    - Dipole: total length ≈ 0.48 λ, with a small feed gap.
-   - Air box padding ≥ λ/4 at the lowest frequency from any metal.
-3. **Assign the correct port(s) for this design's feed** (table in "Ports & simulation") and add a
-   `simulation` block (sweep around the target band, `fields_at` the centre frequency).
-4. Run `PY scripts/build.py projects/<name>.json --render`, read the summary
+   - Air box padding ≥ λ/4 at the lowest frequency from any metal (`pad` variable).
+3. Follow "Model rules that keep a project valid for both solvers": axis-aligned `airbox` with the
+   `radiation` boundary, axis-aligned sheets, known materials, no `mesh_size`.
+4. **Assign the correct port(s) for this design's feed** (table in "Lumped ports") and add the full
+   `simulation` block above (sweep around the target band, `fields_at` the centre frequency).
+5. Run `PY scripts/build.py projects/<name>.json --render`, read the summary
    (objects, groups, **Ports: every port must be OK**, warnings), and look at `out/<name>_top.png`,
-   `_front.png` and `_iso.png`. Fix errors, warnings and mismatches until it builds cleanly and matches
-   the request.
-5. If openEMS can simulate it, run `PY scripts/simulate.py projects/<name>.json` and check the
-   resonance/match (see "Ports & simulation"); retune if needed.
-6. Tell the user the key dimensions (mm), the port you chose and why, the simulated numbers, and every
-   assumption. The running app picks the file up automatically.
+   `_front.png` and `_iso.png`. The groups must include `bc:radiation`, every `port:<n>`, and a `mat:`
+   group per material. Fix errors, warnings and mismatches until it builds cleanly and matches the
+   request.
+6. Simulate with the chosen solver (`PY scripts/simulate.py projects/<name>.json`) and check the
+   resonance/match (see "Choosing and running a solver"); retune if needed.
+7. Tell the user the key dimensions (mm), the port you chose and why, the solver and the simulated
+   numbers, anything that limits the model to one solver, and every assumption. The running app picks
+   the file up automatically.

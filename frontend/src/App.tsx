@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Build, FieldPlane, ProjectInfo, SimStatus, WsMsg, cancelSim, getBuild, getField, getSim, ghz, importProject,
-  listProjects,
+  listProjects, recomputeFields,
 } from "./api";
 
 type Theme = "light" | "dark";
@@ -131,7 +131,7 @@ export default function App() {
     if (!ov.on || !current) return;
     const t = setTimeout(() => getField(current, ov.f, ov.plane, ov.pos).then(setFp).catch((e) => setError(String(e))), 120);
     return () => clearTimeout(t);
-  }, [ov.on, ov.f, ov.plane, ov.pos, current]);
+  }, [ov.on, ov.f, ov.plane, ov.pos, current, res?.fields_updated_at]);
   useEffect(() => {
     if (!ov.animate) return;
     let raf = 0, t0 = performance.now();
@@ -140,6 +140,10 @@ export default function App() {
     return () => cancelAnimationFrame(raf);
   }, [ov.animate]);
   const fieldMax = useMemo(() => (fp ? magnitudes(fp).max : 1), [fp]);
+  // Palace: probe grid density for the field plot; Recompute re-probes without a new sweep
+  const [fieldPts, setFieldPts] = useState(40);
+  useEffect(() => { setFieldPts(res?.field_points ?? 40); }, [res?.field_points]);
+  const recompute = () => current && recomputeFields(current, fieldPts).catch((e) => setError(String(e)));
   // deep link #modeler/field opens the E-field overlay once results are loaded
   useEffect(() => { if (hashReport === "field" && res?.fields_at.length && !ov.on) enableOverlay(); }, [res]); // eslint-disable-line
 
@@ -254,6 +258,17 @@ export default function App() {
                     <label><input type="checkbox" checked={ov.vectors} onChange={(e) => setOv({ ...ov, vectors: e.target.checked })} />Vector_E arrows</label>
                     <label>Scale <select value={ov.scale} onChange={(e) => setOv({ ...ov, scale: e.target.value as FieldScale })}>
                       <option value="log">log (40 dB)</option><option value="lin">linear</option></select></label>
+                    {res?.solver === "palace" && (
+                      <div className="field-grid">
+                        <label>Grid density (points, longest side)
+                          <input type="number" min={8} max={100} value={fieldPts}
+                                 onChange={(e) => setFieldPts(Math.max(8, Math.min(100, +e.target.value || 8)))} /></label>
+                        <div className="dim">{res.field_grid ? `now ${res.field_grid.join(" × ")} probes` : ""}</div>
+                        {sim?.status === "running"
+                          ? <div className="dim">Recomputing… {Math.round(sim.progress)}%</div>
+                          : <button disabled={fieldPts === res.field_points} onClick={recompute}>Recompute field</button>}
+                      </div>
+                    )}
                   </div>
                   <div className="colorbar">
                     <div className="dim">Mag_E [V/m], 1 W in</div>
@@ -270,7 +285,8 @@ export default function App() {
         )}
 
         {tab === "analysis" && r && current && build && (
-          <AnalysisTab id={current} r={r} source={build.source} readonly={readonly} sim={sim} onError={setError} />
+          <AnalysisTab id={current} r={r} source={build.source} readonly={readonly} sim={sim} onError={setError}
+                       onPlotField={enableOverlay} />
         )}
 
         {tab === "results" && (res
